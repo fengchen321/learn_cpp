@@ -72,9 +72,9 @@ void test_common_type() {
 
 //    using what = typename common_type_two<int, long>::type;
     using what = typename common_type_two<Cat, Animal>::type;
-    printf("what: %s\n", typeid(what).name());
+    printf("what: %s\n", demangle(typeid(what).name()).c_str());
     using what_Ts = typename common_type<int, float, double>::type;
-    printf("what_Ts: %s\n", typeid(what_Ts).name());
+    printf("what_Ts: %s\n", demangle(typeid(what_Ts).name()).c_str());
 
 //    using what_Ts_func = decltype(get_common_type(int(), float(), double()));
 #if __cplusplus >= 202002L
@@ -82,7 +82,7 @@ void test_common_type() {
 #else
     using what_Ts_func = decltype(get_common_type(dummy<Cat>{}, dummy<Animal>{}));
 #endif
-    printf("what_Ts_func: %s\n", typeid(what_Ts_func).name());
+    printf("what_Ts_func: %s\n", demangle(typeid(what_Ts_func).name()).c_str());
 }
 
 int main() {

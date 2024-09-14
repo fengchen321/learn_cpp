@@ -5,6 +5,8 @@
 #ifndef LEARN_CPP_PROMPT_H
 #define LEARN_CPP_PROMPT_H
 #include <iostream>
+#include <cxxabi.h>
+#include <memory>
 
 void display_cpp_version() {
     printf("Current version: ");
@@ -19,5 +21,14 @@ void display_cpp_version() {
 #else
     printf("Pre-C++11\n");
 #endif
+}
+
+std::string demangle(const char* name) {
+    int status = 0;
+    std::unique_ptr<char[], decltype(&std::free)> res {
+            abi::__cxa_demangle(name, nullptr, nullptr, &status),
+            std::free
+    };
+    return (status == 0) ? res.get() : name;
 }
 #endif //LEARN_CPP_PROMPT_H

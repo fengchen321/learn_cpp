@@ -35,3 +35,4 @@ create_executable(template_SFINAE SOURCE_FILES src/template_SFINAE.cpp CXX_STAND
 create_executable(print SOURCE_FILES src/template_print.cpp)
 create_executable(common_type SOURCE_FILES src/template_common_type.cpp  CXX_STANDARD 20)
 create_executable(dummy_array_iterator SOURCE_FILES src/dummy_array_iterator.cpp)
+create_executable(template_type_conversion SOURCE_FILES src/template_type_conversion.cpp)
