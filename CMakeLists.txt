@@ -1,5 +1,5 @@
 #linux: cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=${GCC_PATH}/bin/gcc -DCMAKE_CXX_COMPILER=${GCC_PATH}/bin/g++ ..
-cmake_minimum_required(VERSION 3.23)
+cmake_minimum_required(VERSION 3.22)
 project(learn_cpp)
 
 set(CMAKE_CXX_STANDARD 17)
