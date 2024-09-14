@@ -23,6 +23,17 @@ void display_cpp_version() {
 #endif
 }
 
+struct AutoLog{ 
+    AutoLog(std::string name) {
+        mFuncName = name;
+        printf("**************** %s **************** \n", mFuncName.c_str());
+    }
+    ~AutoLog() {
+        printf("**************** %s **************** \n", mFuncName.c_str());
+    }
+    std::string mFuncName;
+};
+
 std::string demangle(const char* name) {
     int status = 0;
     std::unique_ptr<char[], decltype(&std::free)> res {
