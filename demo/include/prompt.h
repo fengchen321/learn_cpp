@@ -8,7 +8,9 @@
 #include <cxxabi.h>
 #include <memory>
 
-void display_cpp_version() {
+namespace prompt {
+
+inline void display_cpp_version() {
     printf("Current version: ");
 #if __cplusplus >= 202002L
     printf("C++ 20 or later\n");
@@ -34,7 +36,7 @@ struct AutoLog{
     std::string mFuncName;
 };
 
-std::string demangle(const char* name) {
+inline std::string demangle(const char* name) {
     int status = 0;
     std::unique_ptr<char[], decltype(&std::free)> res {
             abi::__cxa_demangle(name, nullptr, nullptr, &status),
@@ -42,4 +44,6 @@ std::string demangle(const char* name) {
     };
     return (status == 0) ? res.get() : name;
 }
+
+} // prompt
 #endif //LEARN_CPP_PROMPT_H

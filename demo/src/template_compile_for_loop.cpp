@@ -212,7 +212,7 @@ void test_static_for_3() {
     });
 }
 int main() {
-    display_cpp_version();
+    prompt::display_cpp_version();
     // test_static_for();
     // test_static_for_1();
     test_static_for_2();

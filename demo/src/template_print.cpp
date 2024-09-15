@@ -84,7 +84,7 @@ void test_print() {
 }
 
 int main() {
-    display_cpp_version();
+    prompt::display_cpp_version();
     test_sum();
     test_print();
     return 0;

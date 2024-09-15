@@ -155,9 +155,9 @@ void test_tuple_apply() {
     using what2 = tuple_apply<variant_wrapper, Var>::type;
     using what3 = tuple_apply<tuple_wrapper, Var>::type;
 #endif
-    printf("what: %s\n", demangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", demangle(typeid(what2).name()).c_str());
-    printf("what3: %s\n", demangle(typeid(what3).name()).c_str());
+    printf("what: %s\n", prompt::demangle(typeid(what).name()).c_str());
+    printf("what2: %s\n", prompt::demangle(typeid(what2).name()).c_str());
+    printf("what3: %s\n", prompt::demangle(typeid(what3).name()).c_str());
 
 }
 
@@ -197,9 +197,9 @@ void test_tuple_map() {
     using what2 = tuple_map<vector_wrapper, Var>::type;
     using what3 = tuple_map<array_wrapper<3>, Tup>::type;
 
-    printf("what: %s\n", demangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", demangle(typeid(what2).name()).c_str());
-    printf("what3: %s\n", demangle(typeid(what3).name()).c_str());
+    printf("what: %s\n", prompt::demangle(typeid(what).name()).c_str());
+    printf("what2: %s\n", prompt::demangle(typeid(what2).name()).c_str());
+    printf("what3: %s\n", prompt::demangle(typeid(what3).name()).c_str());
 }
 
 /*
@@ -229,8 +229,8 @@ void test_tuple_cat() {
     using what = tuple_cat<Tup, Tup2>::type;
     using what2 = tuple_push_front<char *, Tup>::type;
     
-    printf("what: %s\n", demangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", demangle(typeid(what2).name()).c_str());
+    printf("what: %s\n", prompt::demangle(typeid(what).name()).c_str());
+    printf("what2: %s\n", prompt::demangle(typeid(what2).name()).c_str());
 }
 
 /*
@@ -281,17 +281,17 @@ void test_tuple_get() {
     using what = tuple_get_first<Tup>::type;
     using what2 = tuple_get_first<Tup2>::type;
     
-    printf("what: %s\n", demangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", demangle(typeid(what2).name()).c_str());
+    printf("what: %s\n", prompt::demangle(typeid(what).name()).c_str());
+    printf("what2: %s\n", prompt::demangle(typeid(what2).name()).c_str());
 
     using what3 = tuple_front<Tup>::type;
     using what4 = tuple_2d<Tup2>::type;
 
-    printf("what3: %s\n", demangle(typeid(what3).name()).c_str());
-    printf("what4: %s\n", demangle(typeid(what4).name()).c_str());
+    printf("what3: %s\n", prompt::demangle(typeid(what3).name()).c_str());
+    printf("what4: %s\n", prompt::demangle(typeid(what4).name()).c_str());
 
     using what5 = tuple_element<1, Tup>::type;
-    printf("what5: %s\n", demangle(typeid(what5).name()).c_str());
+    printf("what5: %s\n", prompt::demangle(typeid(what5).name()).c_str());
 
 }
 /*
@@ -366,7 +366,7 @@ void test_tuple_judge() {
 }
 
 int main() {
-    display_cpp_version();
+    prompt::display_cpp_version();
     // test_vec_int();
     // test_tuple_size();
     // test_tuple_apply();

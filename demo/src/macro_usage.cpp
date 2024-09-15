@@ -124,7 +124,7 @@ NOINLINE void foo() {
 #endif
 
 int main() {
-    display_cpp_version();
+    prompt::display_cpp_version();
     int code = ERR_INVALID_PARAMETER;
     printf("Error code %d: %s\n", code, errorToString(code));
 //    ASSERT(0 == 2);

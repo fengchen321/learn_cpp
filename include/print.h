@@ -12,6 +12,7 @@
 #include <string_view>
 #include <optional>
 #include <variant>
+#include <cstdint>
 
 namespace _print_details {
     template <class T, class = void>
