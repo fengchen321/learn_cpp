@@ -46,3 +46,4 @@ create_executable(template_compile_for_loop SOURCE_FILES src/template_compile_fo
 create_executable(format_print SOURCE_FILES src/format_print.cpp CXX_STANDARD 20)
 create_executable(random_generation SOURCE_FILES src/random_generation.cpp LINK_LIBS -lpthread) 
 create_executable(value_category SOURCE_FILES src/value_category.cpp)
+create_executable(template_compile_reflect SOURCE_FILES src/template_compile_reflect.cpp)# CXX_STANDARD 20)
