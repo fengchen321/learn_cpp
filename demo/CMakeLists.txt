@@ -45,3 +45,4 @@ create_executable(template_type_conversion SOURCE_FILES src/template_type_conver
 create_executable(template_compile_for_loop SOURCE_FILES src/template_compile_for_loop.cpp)
 create_executable(format_print SOURCE_FILES src/format_print.cpp CXX_STANDARD 20)
 create_executable(random_generation SOURCE_FILES src/random_generation.cpp LINK_LIBS -lpthread) 
+create_executable(value_category SOURCE_FILES src/value_category.cpp)
