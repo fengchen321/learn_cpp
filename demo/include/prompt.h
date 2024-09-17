@@ -5,8 +5,6 @@
 #ifndef LEARN_CPP_PROMPT_H
 #define LEARN_CPP_PROMPT_H
 #include <iostream>
-#include <cxxabi.h>
-
 namespace prompt {
 
 inline void display_cpp_version() {

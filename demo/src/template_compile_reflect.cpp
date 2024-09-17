@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "scienum.h"
+#include "gtest_prompt.h"
 
 // https://github.com/Neargye/magic_enum/
 #if defined(_MSC_VER)
@@ -23,26 +24,42 @@ void log(std::string msg) {
 }
 #endif
 
+TEST(CompileReflect, Log) {
+    LOG("Hello world!");
+    log("Hello world!");
+}
+
 template <class T>
 std::string get_type_name() {
     std::string s =  FUNC_SIGNATURE;
+#if defined(_MSC_VER)
+    size_t pos = s.find(',');
+    pos += 1;
+    size_t pos2 = s.find('>', pos);
+#else
     auto pos = s.find("T = ");
     pos += 4;
     auto pos2 = s.find_first_of(" ;]", pos);
+#endif
     return s.substr(pos, pos2 - pos);
 }
 
-enum Color {
-    RED =1 ,
-    GREEN = 2,
-    BLUE = 3
-};
+TEST(CompileReflect, GetTypeName) {
+    EXPECT_STREQ(get_type_name<double>().c_str(),"double"); 
+}
+
 template <class T, T N>
 std::string get_int_name() {
     std::string s =  FUNC_SIGNATURE;
-    auto pos = s.find("N = ");
+#if defined(_MSC_VER)
+    size_t pos = s.find(',');
+    pos += 1;
+    size_t pos2 = s.find('>', pos);
+#else
+    auto pos = s.find("T = ");
     pos += 4;
     auto pos2 = s.find_first_of(" ;]", pos);
+#endif
     return s.substr(pos, pos2 - pos);
 }
 // 编译期for循环 static_for  -> https://www.bilibili.com/video/BV1NM4y1e7Hn?t=3931.9 demo/src/template_compile_for_loop.cpp
@@ -77,23 +94,28 @@ std::string get_int_name_dynamic(T value) {
     return ret;
 }
 
+enum Color {
+    RED =1 ,
+    GREEN = 2,
+    BLUE = 3
+};
 
-void test() {
+TEST(CompileReflect, GetTypeNameDynamic){
     Color c = RED;
-    std::cout << get_int_name_dynamic(c) << std::endl;
+    EXPECT_STREQ(get_int_name_dynamic(c).c_str(),"Color"); 
 }
 
-void test_scienum() {
-    std::cout << scienum::get_enum_name(BLUE) << std::endl;
-    std::cout << scienum::enum_from_name<Color>("BLUE") << std::endl;
-    std::cout << scienum::get_enum_name<Color, (Color)1, (Color)3>(BLUE) << std::endl;
-    // std::cout << scienum::enum_from_name<Color>("xxx") << std::endl;
+TEST(CompileReflect, ScienumTest){
+    EXPECT_STREQ(scienum::get_enum_name(BLUE).c_str(),"BLUE"); 
+    EXPECT_EQ(scienum::enum_from_name<Color>("BLUE"),BLUE);
+    std::string s = scienum::get_enum_name<Color, (Color)1, (Color)3>(RED);
+    EXPECT_STREQ(s.c_str(),"RED");
+
+    ASSERT_THROW_EXCEPTION(scienum::enum_from_name<Color>("xxx"), "Invalid enum name");
 }
 
-int main() {
-    // LOG("Hello world!");
-    // log("Hello world!");
-    // test();
-    test_scienum();
-    return 0;
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include "print.h"
+#include "gtest_prompt.h"
 /*
  * decltype 配合 decay_t 一起使用
  * std::is_same_v<std::decay_t<decltype(t)>, int>
@@ -25,25 +26,16 @@ auto func(T const &t) {
         return t;
     }
 }
-void test_func() {
+
+TEST(FuncTest, DiffInput) {
     int i = 0;
+    EXPECT_EQ(func(i), 1);
     double d = 0.0;
+    EXPECT_EQ(func(d), 1.0);
     std::string s = "hello";
-    print(func(i));
-    print(func(d));
-    print(func(s));
+    EXPECT_EQ(func(s), "hello world");
 }
-class Log {
-public:
-    Log(std::string str) : _str(std::move(str)) {
-        printf("entered %s\n", _str.c_str());
-    }
-    ~Log() {
-        printf("exited %s\n", _str.c_str());
-    }
-private:
-    std::string _str;
-};
+
 /*
  * std::is_same_v<decltype(f()), void> -> std::is_void_v<decltype(f())> 或者 std::is_void_v<std::invoke_result_t<F>>
  * 或者 std::is_void_v<decltype(std::declval<F>()())>
@@ -51,7 +43,6 @@ private:
  */
 template <class F>
 auto invoke(F f) {
-    Log log("test");
     if constexpr (std::is_void_v<decltype(std::declval<F>()())>) {
         f();
     } else {
@@ -60,40 +51,45 @@ auto invoke(F f) {
     }
 }
 
-void test_invoke() {
-    std::vector<int> i{42};
-    {
-        invoke([]() -> int {
-            return 1;
-        });
-    }
-    {
-        invoke([]() -> void {
-            print("hello world");
-        });
-    }
+TEST(InvokeTest, ReturnTypeInt) {
+    int result = invoke([]() -> int {
+        return 42;
+    });
+    EXPECT_EQ(result, 42);
 }
+
+TEST(InvokeTest, ReturnTypeVoid) {
+    bool called = false;
+    invoke([&]() -> void {
+        called = true;
+    });
+    EXPECT_TRUE(called);
+}
+
 #define REQUIRES(x) std::enable_if_t<(x), int> = 0
 template <class F, REQUIRES(std::is_void_v<std::invoke_result_t<F>>)>
 auto separate_invoke(F f){
-    Log log("void");
     f();
 }
 template <class F, REQUIRES(!std::is_void_v<std::invoke_result_t<F>>)>
 auto separate_invoke(F f){
-    Log log("non-void");
     auto result = f();
     return result;
 }
 
-void test_separate_invoke() {
-    std::vector<int> i{42};
-    separate_invoke([]()->int {
-        return 1;
+TEST(SeparateInvokeTest, ReturnTypeInt) {
+    int result = separate_invoke([]() -> int {
+        return 42;
     });
-    separate_invoke([]()->void {
-        print("hello world");
+    EXPECT_EQ(result, 42);
+}
+
+TEST(SeparateInvokeTest, ReturnTypeVoid) {
+    bool called = false;
+    separate_invoke([&]() -> void {
+        called = true;
     });
+    EXPECT_TRUE(called);
 }
 
 /*
@@ -167,17 +163,19 @@ void gench(T t) {
     print("no any method supported!");
 }
 #endif
-int main() {
-//    test_func();
-//    test_invoke();
-//    test_separate_invoke();
+
+TEST(JudgeMemberFunc, Gench) {
     mystudent s;
     myteacher t;
     myclass c;
     myvoid v;
-    gench(c);
-    gench(s);
-    gench(t);
-    gench(v);
-    return 0;
+    ASSERT_LOGS_STDOUT(gench(s), "student dismantle");
+    ASSERT_LOGS_STDOUT(gench(t), "teacher rebel  1\nteacher rebel  2\nteacher rebel  3\nteacher rebel  4");
+    ASSERT_LOGS_STDOUT(gench(c), "class dismantle");
+    ASSERT_LOGS_STDOUT(gench(v), "no any method supported!");
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

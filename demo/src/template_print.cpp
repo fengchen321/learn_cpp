@@ -4,23 +4,42 @@
 #include <vector>
 #include <iostream>
 #include "prompt.h"
+#include "gtest_prompt.h"
 
 /*
  * 求和
  */
+#if __cplusplus >= 201703L
 template <class ...Ts>
 auto sum(Ts ...ts) {
     return (0 + ... + ts);
 }
-void test_sum() {
-    std::cout << sum() << "\n";
-    std::cout << sum(1) << "\n";
-    std::cout << sum(1, 2) << "\n";
+#else
+auto sum_impl() {
+    return 0; 
+}
+
+template <class T0, class ...Ts>
+auto sum_impl(T0 t0, Ts ...ts) {
+    return t0 + sum_impl(ts...);
+}
+
+template <class ...Ts>
+auto sum(Ts ...ts) {
+    return sum_impl(ts...);
+}
+#endif
+
+TEST(PrintTest, Sum) {
+    EXPECT_EQ(sum(), 0);
+    EXPECT_EQ(sum(1), 1);
+    EXPECT_EQ(sum(1, 2), 3);
 }
 /*
  * 打印
  */
 #if __cplusplus >= 201703L
+#if 1
 #include "print.h"
 auto printfun() {printnl("{}\n");}
 template <class T0, class ... Ts>
@@ -33,7 +52,6 @@ auto printfun(T0 t0, Ts ...ts) {
 //    (print(ts), ...);
 }
 #else
-#if 0
 // 终止条件
 void printfun_impl() {}
 
@@ -53,6 +71,7 @@ void printfun(Ts ...ts) {
     printfun_impl(ts ...);
     std::cout << "}\n";
 }
+#endif
 #else
 #define REQUIRES(x) std::enable_if_t<(x), int> = 0
 void printfun_impl() {}
@@ -74,18 +93,16 @@ void printfun(Ts ...ts) {
     std::cout << "}\n";
 }
 #endif
-#endif
 
-void test_print() {
-    printfun();
-    printfun(1);
-    printfun(1, 2);
-    printfun(1, 2, 3);
+TEST(PrintTest, Print) {
+    ASSERT_LOGS_STDOUT(printfun(), "{}\n");
+    ASSERT_LOGS_STDOUT(printfun(1), "{1}\n");
+    ASSERT_LOGS_STDOUT(printfun(1,2), "{1, 2}\n");
+    ASSERT_LOGS_STDOUT(printfun(1,2,3), "{1, 2, 3}\n");
 }
 
-int main() {
+int main(int argc, char** argv) {
     prompt::display_cpp_version();
-    test_sum();
-    test_print();
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

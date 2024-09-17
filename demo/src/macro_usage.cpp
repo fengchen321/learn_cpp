@@ -3,6 +3,8 @@
 //
 #include <iostream>
 #include "prompt.h"
+#include "gtest_prompt.h"
+
 /*
  * # 字符串化和 ##连接符
  */
@@ -23,6 +25,13 @@ const char* errorToString(int errorCode) {
     }
 }
 
+TEST(MacroUsage, ErrorToString) {
+    EXPECT_STREQ(errorToString(ERR_FILE_NOT_FOUND), "FILE_NOT_FOUND");
+    EXPECT_STREQ(errorToString(ERR_INVALID_PARAMETER), "INVALID_PARAMETER");
+    EXPECT_STREQ(errorToString(ERR_OUT_OF_MEMORY), "OUT_OF_MEMORY");
+    EXPECT_STREQ(errorToString(999), "Unknown error");
+}
+
 /*
  * 显示行号和文件名
  */
@@ -31,7 +40,8 @@ void check_error(const char *filename, int lineno, const char *expr) {
     auto err = GetError();
     if(err != 0) {
         std::cerr << filename << ":" << lineno << ": " << expr << " failed: " << err << std::endl;
-        std::terminate();
+        // std::terminate();
+        throw std::runtime_error("Error occurred in check_error.");
     }
 }
 #if NDEBUG
@@ -44,33 +54,57 @@ void check_error(const char *filename, int lineno, const char *expr) {
     check_error(__FILE__, __LINE__, #x); \
 }   while (0)
 #endif
-int test(int i) {
-    return 5;
+
+void test_checkcode() {}
+
+
+TEST(MacroUsage, CheckCode) {
+#if NDEBUG
+    ASSERT_NO_THROW(CHECK_CODE(test_checkcode()));
+#else
+    ASSERT_LOGS_EXCEPTION(CHECK_CODE(test_checkcode()), "test_checkcode() failed:");
+#endif
 }
 
 /*
  * assert
  */
-#define ASSERT(x) do {                                \
+#if NDEBUG
+#define OUR_ASSERT(x)
+#define OUR_ASSERT_GT(x, y)
+#else
+#define OUR_ASSERT(x) do {                                \
     if (!(x)) {                                       \
         std::cerr << "Assert failed: " << #x << "\n"; \
-        std::terminate();                             \
+        throw std::runtime_error("Assertion failed.");\
     }                                                 \
 }   while (0)
-#if NDEBUG
-#define ASSERT_GT(x, y)
-#else
-#define ASSERT_GT(x, y) do {                          \
+
+#define OUR_ASSERT_GT(x, y) do {                          \
     decltype(x) __x = x;                              \
     decltype(y) __y = y;                              \
     if (!((__x) > (__y))) {                           \
         std::cerr << "Assert failed: " << #x <<       \
         " (" << (__x) << ")" << " > " << #y << "\n";  \
-        std::terminate();                             \
+        throw std::runtime_error("Assertion failed.");\
     }                                                 \
 }   while (0)
 #endif
 
+TEST(MacroUsage, Assert) {
+#if NDEBUG
+    // Assertions are disabled in NDEBUG
+    ASSERT_NO_THROW(OUR_ASSERT(0 == 2));
+    int i = 1;
+    ASSERT_NO_THROW(OUR_ASSERT_GT(i << 1 , 2));
+    ASSERT_NO_THROW(OUR_ASSERT_GT(i++ , 1));
+#else
+    ASSERT_LOGS_EXCEPTION(OUR_ASSERT(0 == 2), "Assert failed: 0 == 2");
+    int i = 1;
+    ASSERT_LOGS_EXCEPTION(OUR_ASSERT_GT(i << 1 , 2), "Assert failed: i << 1 (2) > 2");
+    ASSERT_LOGS_EXCEPTION(OUR_ASSERT_GT(i++ , 1), "Assert failed: i++ (1) > 1");
+#endif
+}
 /*
  * 跨平台、版本、编译器使用优化
  */
@@ -108,6 +142,11 @@ NOINLINE void foo() {
     std::cout << "foo" << std::endl;
 }
 
+TEST(MacroUsage, Platform) {
+    ASSERT_LOGS_STDOUT(foo(1), "1");
+    ASSERT_LOGS_STDOUT(foo(), "foo");
+}
+
 /*
  * print 变参打印  c++20: __VA_OPT__
  */
@@ -123,18 +162,13 @@ NOINLINE void foo() {
 } while (0)
 #endif
 
-int main() {
+TEST(MacroUsage, Print) {
+    ASSERT_LOGS_STDOUT(PRINT("hello\n"), "hello");
+    ASSERT_LOGS_STDOUT(PRINT("hello %d + %d \n", 9, 2), "hello 9 + 2");
+}
+
+int main(int argc, char** argv) {
     prompt::display_cpp_version();
-    int code = ERR_INVALID_PARAMETER;
-    printf("Error code %d: %s\n", code, errorToString(code));
-//    ASSERT(0 == 2);
-//    CHECK_CODE(test(6));
-//    int i = 1;
-//    ASSERT_GT(i << 1 , 2);
-//    ASSERT_GT(i++ , 1);
-    foo(1);
-//    foo();
-//    PRINT("hello\n");
-//    PRINT("hello %d + %d ", 9, 2);
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

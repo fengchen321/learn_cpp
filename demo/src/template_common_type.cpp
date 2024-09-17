@@ -6,13 +6,23 @@
 #include <iostream>
 #include "prompt.h"
 #include "cppdemangle.h"
+#include "gtest_prompt.h"
 /*
  * array 引出 common_type
  */
 template <class ...Ts>
 auto array_func(Ts ...ts) {
-    using T = std::common_type_t<Ts...>; // Ts...中的公共类型, int long double T为
-    return std::array<T, sizeof...(ts)>{ts...};
+    using T = std::common_type_t<Ts...>; // Ts...中的公共类型, int long double T为 double
+    return std::array<T, sizeof...(ts)>{static_cast<T>(ts)...};
+}
+
+TEST(CommonType, ArrayFunc) {
+    auto a = array_func(1, 2.0, 3.0f);
+    using ElementType = decltype(a)::value_type;
+    EXPECT_FALSE((std::is_same_v<ElementType, int>));
+    EXPECT_FALSE((std::is_same_v<ElementType, float>));
+    EXPECT_TRUE((std::is_same_v<ElementType, double>));
+
 }
 
 template <class T1, class T2>
@@ -33,6 +43,30 @@ struct common_type<T0, T1, Ts...> { // 递归
     using type = typename common_type_two<T0, typename common_type<T1, Ts...>::type>::type;
 };
 
+TEST(CommonType, CommonTypeRecursive) {
+    using what = typename common_type_two<int, long>::type;
+    EXPECT_FALSE((std::is_same_v<what, int>));
+    EXPECT_TRUE((std::is_same_v<what, long>));
+
+    using what2 = typename common_type<int, long, double>::type;
+    EXPECT_FALSE((std::is_same_v<what2, int>));
+    EXPECT_FALSE((std::is_same_v<what2, long>));
+    EXPECT_TRUE((std::is_same_v<what2, double>));
+}
+
+struct Animal{};
+struct Cat : Animal {
+    Cat(Cat &&) = delete; // 删除移动构造，拷贝，默认都会被删除
+};
+struct Dog : Animal {};
+
+TEST(CommonType, CommonTypeRecursiveStruct) {
+    using what = typename common_type_two<Cat, Animal>::type;
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"Animal");
+
+    using what2 = typename common_type<Cat, Dog, Animal>::type;
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"Animal"); 
+}
 
 #if __cplusplus >= 202002L
 // 函数版获取common_type
@@ -63,31 +97,26 @@ constexpr auto get_common_type(dummy<T0> t0, dummy<Ts> ...ts) {
     }
 }
 #endif
-struct Animal{};
-struct Cat : Animal {
-    Cat(Cat &&) = delete; // 删除移动构造，拷贝，默认都会被删除
-};
 
-void test_common_type() {
-    auto a = array_func(1, 2, 3);
-
-//    using what = typename common_type_two<int, long>::type;
-    using what = typename common_type_two<Cat, Animal>::type;
-    printf("what: %s\n", cppdemangle(typeid(what).name()).c_str());
-    using what_Ts = typename common_type<int, float, double>::type;
-    printf("what_Ts: %s\n", cppdemangle(typeid(what_Ts).name()).c_str());
-
-//    using what_Ts_func = decltype(get_common_type(int(), float(), double()));
+TEST(CommonType, CommonTypeFunc) {
 #if __cplusplus >= 202002L
     using what_Ts_func = decltype(get_common_type(std::type_identity<Cat>{}, std::type_identity<Animal>{}));
+    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"std::type_identity<Animal&&>");
+
+    using what_Ts_func2 = decltype(get_common_type(std::type_identity<Cat>{}, std::type_identity<Dog>{}, std::type_identity<Animal>{}));
+    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func2).name()).c_str(),"std::type_identity<Animal&&>");
 #else
     using what_Ts_func = decltype(get_common_type(dummy<Cat>{}, dummy<Animal>{}));
+    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"dummy<Animal>");
+
+    using what_Ts_func2 = decltype(get_common_type(dummy<Cat>{}, dummy<Dog>{}, dummy<Animal>{}));
+    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"dummy<Animal>");
+
 #endif
-    printf("what_Ts_func: %s\n", cppdemangle(typeid(what_Ts_func).name()).c_str());
 }
 
-int main() {
+int main(int argc, char** argv) {
     prompt::display_cpp_version();
-    test_common_type();
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

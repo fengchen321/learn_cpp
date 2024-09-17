@@ -5,6 +5,7 @@
 #include <vector>
 #include "prompt.h"
 #include "cppdemangle.h"
+#include "gtest_prompt.h"
 /*
  * 类型检查和参数处理
  */
@@ -18,6 +19,13 @@ struct is_convertible_any {
     static constexpr bool value = (false || ... || std::is_convertible_v<T, Ts>);
 };
 
+TEST(TypeConversion, type_check) {
+    EXPECT_TRUE((is_same_any<int, int, float>::value));
+    EXPECT_FALSE((is_same_any<double, int, float>::value));
+    EXPECT_TRUE((is_convertible_any<int, float, double>::value));
+    EXPECT_FALSE((is_convertible_any<std::string, int, float>::value));
+}
+
 #if __cplusplus >= 202002L
 template<class ...Ts>
     requires((true && ... && std::is_convertible_v<Ts, int>))  // is_same_v 太严格，换成is_convertible_v
@@ -26,7 +34,7 @@ void vec_int(Ts ...ts) { }
 template <class T0, class ...Ts>
     requires((true && ... && std::is_convertible_v<Ts, T0>))
 std::array<T0, sizeof...(Ts) + 1> vec_int(T0 t0, Ts ...ts) {
-    return {t0, ts...};
+    return {static_cast<T0>(t0), (static_cast<T0>(ts))...};
 }
 #else
 template<class ...Ts>
@@ -36,13 +44,15 @@ vec_int(Ts ...ts) { }
 template <class T0, class ...Ts>
 std::enable_if_t<(true && ... && std::is_convertible_v<Ts, T0>), std::array<T0, sizeof...(Ts) + 1>>
 vec_int(T0 t0, Ts ...ts) {
-    return {t0, ts...};
+    return {static_cast<T0>(t0), (static_cast<T0>(ts))...};
 }
 #endif
 
-void test_vec_int() {
-    vec_int(1, 1u);
-    printf("is_same_any<int, int, float>::value: %d\n",is_same_any<int, int, float>::value);
+TEST(TypeConversion, VecInt) {
+    auto it = vec_int(1, 1u);
+    using ElementType = decltype(it)::value_type;
+    EXPECT_TRUE((std::is_same_v<ElementType, int>));
+    EXPECT_FALSE((std::is_same_v<ElementType, unsigned int>));
 }
 
 /*
@@ -61,11 +71,12 @@ struct tuple_size<std::tuple<T0, Ts...>> {
     static constexpr std::size_t value = 1 + tuple_size<std::tuple<Ts...>>::value;
 };
 
-void test_tuple_size() {
+TEST(TypeConversion, TupleSize) {
     using Tup = std::tuple<int, float, double>;
     constexpr auto i = std::tuple_size<Tup>::value;
     constexpr auto j = tuple_size<Tup>::value;
-    std::cout << i << "," << j << "\n";
+    ASSERT_EQ(i, j);
+    ASSERT_EQ(i, 3);
 }
 
 /*
@@ -92,6 +103,16 @@ struct tuple_apply_common_type<std::variant<Ts...>> {
     using type = std::common_type_t<Ts...>;
 };
 #endif
+TEST(TypeConversion, TupleApplyCommonType) {
+    using Tup = std::tuple<int, float, double>;
+    using Var = std::variant<int, float, double>;
+
+    using what = tuple_apply_common_type<Tup>::type;
+    using what2 = tuple_apply_common_type<Var>::type;
+
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"double");
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"double");
+}
 /*
  * 通用的tuple apply 进行类型转换
  */
@@ -142,24 +163,26 @@ struct tuple_apply<Tmpl, std::variant<Ts...>> {
 };
 #endif
 
-void test_tuple_apply() {
+TEST(TypeConversion, TupleApply) {
     using Tup = std::tuple<int, float, double>;
     using Var = std::variant<int, float, double>;
-//    using what = tuple_apply_common_type<Tup>::type;
-//    using what2 = tuple_apply_common_type<Var>::type;
+
 #if TUPLE_APPLY
     using what = tuple_apply<std::common_type, Tup>::type::type;
     using what2 = tuple_apply<std::common_type, Var>::type::type;
-    using what3 = tuple_apply<std::tuple, Var>::type;
+    using what3 = tuple_apply<std::variant, Tup>::type;
+    using what4 = tuple_apply<std::tuple, Var>::type;
 #else
-    using what = tuple_apply<common_type_wrapper, Var>::type;
-    using what2 = tuple_apply<variant_wrapper, Var>::type;
-    using what3 = tuple_apply<tuple_wrapper, Var>::type;
+    using what = tuple_apply<common_type_wrapper, Tup>::type;
+    using what2 = tuple_apply<common_type_wrapper, Var>::type;
+    using what3 = tuple_apply<variant_wrapper, Tup>::type;
+    using what4 = tuple_apply<tuple_wrapper, Var>::type;
 #endif
-    printf("what: %s\n", cppdemangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", cppdemangle(typeid(what2).name()).c_str());
-    printf("what3: %s\n", cppdemangle(typeid(what3).name()).c_str());
-
+    
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"double");
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"double");
+    EXPECT_STREQ(cppdemangle(typeid(what3).name()).c_str(),"std::variant<int, float, double>");
+    EXPECT_STREQ(cppdemangle(typeid(what4).name()).c_str(),"std::tuple<int, float, double>");
 }
 
 /*
@@ -190,7 +213,7 @@ struct tuple_map<Tmpl, std::variant<Ts...>> {
     using type = std::variant<typename Tmpl::template rebind<Ts>::type...>;
 };
 
-void test_tuple_map() {
+TEST(TypeConversion, TupleMap) {
     using Tup = std::tuple<int, float, double>;
     using Var = std::variant<int, float, double>;
 
@@ -198,9 +221,12 @@ void test_tuple_map() {
     using what2 = tuple_map<vector_wrapper, Var>::type;
     using what3 = tuple_map<array_wrapper<3>, Tup>::type;
 
-    printf("what: %s\n", cppdemangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", cppdemangle(typeid(what2).name()).c_str());
-    printf("what3: %s\n", cppdemangle(typeid(what3).name()).c_str());
+    EXPECT_NE(cppdemangle(typeid(what).name()).find("std::tuple<std::vector"), std::string::npos)
+        << "Substring not found in the full string";
+    EXPECT_NE(cppdemangle(typeid(what2).name()).find("std::variant<std::vector"), std::string::npos)
+        << "Substring not found in the full string";
+    EXPECT_NE(cppdemangle(typeid(what3).name()).find("std::tuple<std::array"), std::string::npos)
+        << "Substring not found in the full string";
 }
 
 /*
@@ -223,20 +249,22 @@ struct tuple_push_front<T1, std::tuple<T2s...>> {
     using type = std::tuple<T1, T2s...>;
 };
 
-void test_tuple_cat() {
+TEST(TypeConversion, TupleCat) {
     using Tup = std::tuple<int, float, double>;
     using Tup2 = std::tuple<std::vector<double>, std::array<int, 4>>;
 
     using what = tuple_cat<Tup, Tup2>::type;
     using what2 = tuple_push_front<char *, Tup>::type;
-    
-    printf("what: %s\n", cppdemangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", cppdemangle(typeid(what2).name()).c_str());
+
+    EXPECT_NE(cppdemangle(typeid(what).name()).find("std::tuple<int, float, double, std::vector"), std::string::npos)
+        << "Substring not found in the full string";
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"std::tuple<char*, int, float, double>");
 }
 
 /*
 * 获取类型 tuple_get_first
 */
+
 template <class Tup>
 struct tuple_get_first { };
 
@@ -244,14 +272,38 @@ template <class ...Ts>
 struct tuple_get_first<std::tuple<Ts...>> {
     using type = std::tuple_element_t<0, std::tuple<Ts...>>;
 };
+
+TEST(TypeConversion, TupleGetFirst) {
+    using Tup = std::tuple<int, float, double>;
+    using Tup2 = std::tuple<std::vector<double>, std::array<int, 4>>;
+
+    using what = tuple_get_first<Tup>::type;
+    using what2 = tuple_get_first<Tup2>::type;
+
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"int");
+    EXPECT_NE(cppdemangle(typeid(what2).name()).find("std::vector<double"), std::string::npos)
+        << "Substring not found in the full string";
+}
+
 // tuple_get_first -> tuple_front
 template <class Tup>
-struct tuple_front { };
+struct tuple_front { 
+    using type = void;
+};
 
 template <class T0, class ...Ts>
 struct tuple_front<std::tuple<T0, Ts...>> {
     using type = T0;
 };
+
+TEST(TypeConversion, TupleFront) {
+    using Tup = std::tuple<int, float, double>;
+    using what = tuple_front<Tup>::type;
+    using what2 = tuple_front<std::tuple<>>::type;
+
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"int");
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"void");
+}
 
 template <class Tup>
 struct tuple_2d { };
@@ -260,6 +312,14 @@ template <class T0, class T1, class ...Ts>
 struct tuple_2d<std::tuple<T0, T1, Ts...>> {
     using type = T1;
 };
+
+TEST(TypeConversion, Tuple2D) {
+    using Tup = std::tuple<int, float, double>;
+    using what = tuple_2d<Tup>::type;
+
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"float");
+}
+
 // 实现之前的 tuple_element_t  递归
 template <size_t I, class Tup>
 struct tuple_element { };
@@ -274,27 +334,17 @@ struct tuple_element<N, std::tuple<T0, Ts...>> {
     using type = typename tuple_element<N - 1, std::tuple<Ts...>>::type;
 };
 
-void test_tuple_get() {
+TEST(TypeConversion, TupleElement) {
     using Tup = std::tuple<int, float, double>;
-    using Tup2 = std::tuple<std::vector<double>, std::array<int, 4>>;
+    using what = tuple_element<0, Tup>::type;
+    using what2 = tuple_element<1, Tup>::type;
+    using what3 = tuple_element<2, Tup>::type;
 
-    // using what = tuple_get_first<std::tuple<>>::type;
-    using what = tuple_get_first<Tup>::type;
-    using what2 = tuple_get_first<Tup2>::type;
-    
-    printf("what: %s\n", cppdemangle(typeid(what).name()).c_str());
-    printf("what2: %s\n", cppdemangle(typeid(what2).name()).c_str());
-
-    using what3 = tuple_front<Tup>::type;
-    using what4 = tuple_2d<Tup2>::type;
-
-    printf("what3: %s\n", cppdemangle(typeid(what3).name()).c_str());
-    printf("what4: %s\n", cppdemangle(typeid(what4).name()).c_str());
-
-    using what5 = tuple_element<1, Tup>::type;
-    printf("what5: %s\n", cppdemangle(typeid(what5).name()).c_str());
-
+    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"int");
+    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"float");
+    EXPECT_STREQ(cppdemangle(typeid(what3).name()).c_str(),"double");
 }
+
 /*
 * 判断 tupe 类型是否全为int
 */
@@ -318,6 +368,19 @@ struct tuple_is_all_integral<std::tuple<Ts...>> {
 };
 #endif
 
+TEST(TypeConversion, TupleIsAllIntegral) {
+    using Tup = std::tuple<int, float, double>;
+    using Tup2 = std::tuple<int, int, int>;
+    using Tup3 = std::tuple<int, char, short>;
+
+    constexpr bool all_integral1 = tuple_is_all_integral<Tup>::value;
+    constexpr bool all_integral2 = tuple_is_all_integral<Tup2>::value;
+    constexpr bool all_integral3 = tuple_is_all_integral<Tup3>::value;
+
+    EXPECT_FALSE(all_integral1);
+    EXPECT_TRUE(all_integral2);
+    EXPECT_TRUE(all_integral3);
+}
 template <class Tmpl, class Tup>
 struct tuple_is_all {};
 
@@ -340,40 +403,29 @@ struct CheckFloat {
     };
 };
 
-void test_tuple_judge() {
+TEST(TypeConversion, TupleIsAll) {
     using Tup = std::tuple<int, float, double>;
     using Tup2 = std::tuple<int, int, int>;
     using Tup3 = std::tuple<int, char, short>;
-    
-    constexpr bool all_integral1 = tuple_is_all_integral<Tup>::value;
-    constexpr bool all_integral2 = tuple_is_all_integral<Tup2>::value;
-    constexpr bool all_integral3 = tuple_is_all_integral<Tup3>::value;
-    printf("tuple_is_all_integral<Tup>::value: %d\n", all_integral1);
-    printf("tuple_is_all_integral<Tup2>::value: %d\n", all_integral2);
-    printf("tuple_is_all_integral<Tup3>::value: %d\n", all_integral3);
 
     constexpr bool all_int1 = tuple_is_all<CheckInt, Tup>::value;
     constexpr bool all_int2 = tuple_is_all<CheckInt, Tup2>::value;
     constexpr bool all_int3 = tuple_is_all<CheckInt, Tup3>::value;
+
+    using Tup4 = std::tuple<float, float, float>;
+
     constexpr bool all_float1 = tuple_is_all<CheckFloat, Tup>::value;
-    constexpr bool all_float2 = tuple_is_all<CheckFloat, Tup2>::value;
-    constexpr bool all_float3 = tuple_is_all<CheckFloat, Tup3>::value;
-    printf("tuple_is_all<CheckInt, Tup>::value: %d\n", all_int1);
-    printf("tuple_is_all<CheckInt, Tup2>::value: %d\n", all_int2);
-    printf("tuple_is_all<CheckInt, Tup3>::value: %d\n", all_int3);
-    printf("tuple_is_all<CheckFloat, Tup>::value: %d\n", all_float1);
-    printf("tuple_is_all<CheckFloat, Tup2>::value: %d\n", all_float2);
-    printf("tuple_is_all<CheckFloat, Tup3>::value: %d\n", all_float3);
+    constexpr bool all_float2 = tuple_is_all<CheckFloat, Tup4>::value;
+
+    EXPECT_FALSE(all_int1);
+    EXPECT_TRUE(all_int2);
+    EXPECT_TRUE(all_int3);
+    EXPECT_FALSE(all_float1);
+    EXPECT_TRUE(all_float2);
 }
 
-int main() {
+int main(int argc, char** argv) {
     prompt::display_cpp_version();
-    test_vec_int();
-    test_tuple_size();
-    test_tuple_apply();
-    test_tuple_map();
-    test_tuple_cat();
-    test_tuple_get();
-    test_tuple_judge();
-    return 0;
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

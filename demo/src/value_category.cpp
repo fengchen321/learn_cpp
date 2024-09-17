@@ -1,5 +1,6 @@
 #include <iostream>
 #include "cppdemangle.h"
+#include "gtest_prompt.h"
 
 #if defined(_MSC_VER)
     #define FUNC_SIGNATURE __FUNCSIG__
@@ -14,17 +15,17 @@ void func(int&& a) {
 void func(const int& a) {
     printf("%s\n", FUNC_SIGNATURE);
 }
-// https://zh.cppreference.com/w/cpp/language/value_category
-void test_value() {
-    int a = 1;
-    printf("%s\n",cppdemangle<decltype("ssss")>().c_str());  //lvaue
-    printf("%s\n",cppdemangle<decltype(1)>().c_str());       // prvalue
-    printf("%s\n",cppdemangle<decltype(std::move(a))>().c_str()); // xvalue
-    printf("%s\n",cppdemangle<decltype((a))>().c_str());  // lvalue decltype((a)):decltype套一层括号测试表达式类
-    func(1);  // prvalue
-    func(std::move(a));  // xvalue
-    func(a); // lvalue
 
+// https://zh.cppreference.com/w/cpp/language/value_category
+TEST(ValueCategory, ValueTest) {
+    int a = 1;
+    EXPECT_STREQ(cppdemangle<decltype("ssss")>().c_str(),"char [5] const &"); // lvaue
+    EXPECT_STREQ(cppdemangle<decltype(1)>().c_str(),"int");       // prvalue
+    EXPECT_STREQ(cppdemangle<decltype(std::move(a))>().c_str(),"int &&");  // xvalue
+    EXPECT_STREQ(cppdemangle<decltype((a))>().c_str(),"int &");  // lvalue decltype((a)):decltype套一层括号测试表达式类
+    ASSERT_LOGS_STDOUT(func(1), "void func(int&&)");  // prvalue
+    ASSERT_LOGS_STDOUT(func(std::move(a)), "void func(int&&)");  // xvalue
+    ASSERT_LOGS_STDOUT(func(a), "void func(const int&)");  // lvalue
 }
 
 struct S {
@@ -33,16 +34,17 @@ struct S {
     int &&c;
 };
 
-void test_struct() {
+TEST(ValueCategory, StructTest) {
     int a = 1, b = 1, c = 1;
     S s{a, b, std::move(c)};
-    printf("%s\n",cppdemangle<decltype(s.a)>().c_str());    // prvalue
-    printf("%s\n",cppdemangle<decltype((s.a))>().c_str());  // lvalue
-    printf("%s\n",cppdemangle<decltype(s.b)>().c_str());    // lvalue
-    printf("%s\n",cppdemangle<decltype((s.b))>().c_str());  // lvalue
-    printf("%s\n",cppdemangle<decltype(s.c)>().c_str());    // xvalue
-    printf("%s\n",cppdemangle<decltype((s.c))>().c_str());  // lvalue
-    func(s.c);  // （s.c）左值表达式
+
+    EXPECT_STREQ(cppdemangle<decltype(s.a)>().c_str(),"int"); // prvalue
+    EXPECT_STREQ(cppdemangle<decltype((s.a))>().c_str(),"int &"); // lvalue
+    EXPECT_STREQ(cppdemangle<decltype(s.b)>().c_str(),"int &"); // lvalue
+    EXPECT_STREQ(cppdemangle<decltype((s.b))>().c_str(),"int &"); // lvalue
+    EXPECT_STREQ(cppdemangle<decltype(s.c)>().c_str(),"int &&"); // xvalue
+    EXPECT_STREQ(cppdemangle<decltype((s.c))>().c_str(),"int &"); // lvalue
+    ASSERT_LOGS_STDOUT(func(s.c), "void func(const int&)");  // （s.c）左值表达式
 }
 
 struct S2 {
@@ -68,22 +70,23 @@ struct S2 {
     }
 };
 
-void test_struct2() {
-    printf("%s\n",cppdemangle<decltype(S2().a)>().c_str()); // 临时对象的成员变量 prvalue
-    printf("%s\n",cppdemangle<decltype((S2().a))>().c_str()); //xvalue
-    S2().getA();
+TEST(ValueCategory, Struct2Test) {
+    EXPECT_STREQ(cppdemangle<decltype(S2().a)>().c_str(),"int"); // // 临时对象的成员变量 prvalue
+    EXPECT_STREQ(cppdemangle<decltype((S2().a))>().c_str(),"int &&"); // //xvalue
+
+    ASSERT_LOGS_STDOUT(S2().getA(), "int S2::getA() &&");
 
     S2 s;
-    s.getA();
-    std::move(s).getA();
+    ASSERT_LOGS_STDOUT(s.getA(), "int S2::getA() &");
+    ASSERT_LOGS_STDOUT(std::move(s).getA(), "int S2::getA() &&");
 
     const S2 cs2{};
-    cs2.getA();
-    std::move(cs2).getA();
+    ASSERT_LOGS_STDOUT(cs2.getA();, "int S2::getA() const &");
+    ASSERT_LOGS_STDOUT(std::move(cs2).getA(), "int S2::getA() const &&");
+
 }
 
-int main() {
-    test_value();
-    test_struct();
-    test_struct2();
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

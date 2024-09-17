@@ -6,56 +6,38 @@
 #include <thread>
 #include <iostream>
 #include <numeric>
+#include <map>
+#include <sstream>
+#include "gtest_prompt.h"
 
-void c_random() {
-    // C random
+TEST(RandomGeneration, CRandom) {
     srand(time(NULL));
     int num = rand() % 10;
     float f_num = (float)rand() / RAND_MAX;
-    printf("int: %d, float: %f\n", num, f_num);
+    EXPECT_IN_RANGE(num, 0, 9);
+    EXPECT_IN_RANGE(f_num, 0.0f, 1.0f)
+    // printf("int: %d, float: %f\n", num, f_num);
 }
 
-void cpp_random() {
-    // C++ random
+TEST(RandomGeneration, CppRandom) {
     std::random_device rd; // obtain a random number from hardware
     std::mt19937 gen(rd());
     std::uniform_int_distribution<int> dis(0, 9);
     int num = dis(gen);
-    printf("min: %d, max: %d\n", dis.min(), dis.max());
-    printf("%d\n", num);
+    EXPECT_EQ(0, dis.min());
+    EXPECT_EQ(9, dis.max());
+    EXPECT_IN_RANGE(num, 0, 9);
+    // printf("%d\n", num);
 
     std::uniform_real_distribution<float> f_dis(0, 1);
     float f_num = f_dis(gen);
-    printf("min: %f, max: %f\n", f_dis.min(), f_dis.max());
-    printf("%f\n", f_num);
+    EXPECT_EQ(0, f_dis.min());
+    EXPECT_EQ(1, f_dis.max());
+    EXPECT_IN_RANGE(f_num, 0.0f, 1.0f);
+    // printf("%f\n", f_num);
+
 }
 
-void multi_thread_c_random() {
-    std::thread t1([]() {
-        printf("t1: %d\n", rand());
-        printf("t1: %d\n", rand());
-    });
-    std::thread t2([]() {
-        printf("t2: %d\n", rand());
-        printf("t2: %d\n", rand());
-    });
-    t1.join();
-    t2.join();
-}
-void multi_thread_cpp_random() {
-    std::thread t1([&]() {
-        std::mt19937 gen1(1);
-        printf("t1: %ld\n", gen1());
-        printf("t1: %ld\n", gen1());
-    });
-    std::thread t2([&]() {
-        std::mt19937 gen2;
-        printf("t1: %ld\n", gen2());
-        printf("t1: %ld\n", gen2());
-    });
-    t1.join();
-    t2.join();
-}
 /*
 * xorshift32 random number generator
 */
@@ -82,21 +64,6 @@ struct xorshift32 {
     }
 };
 
-void xorshift32_random() {
-    xorshift32 gen{std::random_device{}()};
-    std::uniform_int_distribution<int> dis(0, 100);     // 生成0到100之间的随机整数
-    std::uniform_real_distribution<float> f_dis(0, 1); // 生成0到1之间的随机浮点数
-    for (size_t i = 0; i < 10; i++) {
-        printf("%u\n", dis(gen));
-        printf("%f\n", f_dis(gen));
-    }
-
-    std::vector<std::string> choices = {"apple", "banana", "cherry"};
-    std::uniform_int_distribution<int> choice_dis(0, choices.size() - 1);
-    for (size_t i = 0; i < 10; i++) {
-        printf("%s\n", choices[choice_dis(gen)].c_str());
-    }
-}
 /*
 * wangshash random number generator
 */
@@ -123,14 +90,87 @@ struct wangshash {
     }
 };
 
-void wangshash_random() {
-    #pragma omp parallel for
-    for (size_t i = 0; i < 100; i++) {
-        wangshash gen(i);
-        std::normal_distribution<float> norm_dis(0, 1); // 均值为0，标准差为1的正态分布
-        printf("%f\n", norm_dis(gen));
+template<typename Generator>
+class RandomTest : public ::testing::Test {
+protected:
+    Generator gen{std::random_device{}()};
+};
+
+// 生成器范围测试
+template<typename Generator>
+class RangeTest : public RandomTest<Generator> {
+};
+
+// 定义 RangeTest 测试套件的模板实例化
+TYPED_TEST_SUITE_P(RangeTest);
+
+TYPED_TEST_P(RangeTest, GeneratesNumbersInRange) {
+    std::uniform_int_distribution<int> dis(0, 100);
+    std::uniform_real_distribution<float> f_dis(0, 1);
+
+    for (size_t i = 0; i < 10; i++) {
+        EXPECT_IN_RANGE(dis(this->gen), 0, 100);
+        EXPECT_IN_RANGE(f_dis(this->gen), 0.0f, 1.0f);
     }
 
+    std::vector<std::string> choices = {"apple", "banana", "cherry"};
+    std::uniform_int_distribution<int> choice_dis(0, choices.size() - 1);
+    for (size_t i = 0; i < 10; i++) {
+        EXPECT_IN_RANGE(choice_dis(this->gen), 0, choices.size() - 1);
+    }
+}
+
+// 相同种子产生相同序列
+TYPED_TEST_SUITE_P(RandomTest);
+
+TYPED_TEST_P(RandomTest, SameSeed) {
+    TypeParam gen1{12345};
+    TypeParam gen1_copy = gen1;
+
+    for (int i = 0; i < 1000; ++i) {
+        EXPECT_EQ(gen1(), gen1_copy());
+    }
+}
+
+// 不同种子产生不同序列
+TYPED_TEST_P(RandomTest, DifferentSeeds) {
+    TypeParam gen1{12345};
+    TypeParam gen2{54321};
+    bool sequences_differ = false;
+    for (int i = 0; i < 1000; ++i) {
+        if (gen1() != gen2()) {
+            sequences_differ = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(sequences_differ);
+}
+
+REGISTER_TYPED_TEST_SUITE_P(RangeTest, GeneratesNumbersInRange); // 注册 RangeTest 测试套件中的测试用例
+REGISTER_TYPED_TEST_SUITE_P(RandomTest, SameSeed, DifferentSeeds); // 注册 RandomTest 测试套件中的测试用例
+
+using MyGenerators = ::testing::Types<std::mt19937, xorshift32, wangshash>; // 定义测试套件中的生成器类型
+INSTANTIATE_TYPED_TEST_SUITE_P(MyGeneratorsTests, RangeTest, MyGenerators);  // 实例化 RangeTest 测试套件
+INSTANTIATE_TYPED_TEST_SUITE_P(MyGeneratorsTests, RandomTest, MyGenerators); // 实例化 RandomTest 测试套件
+
+TEST(WANGSHash, GeneratesNumbers) {
+    size_t within_range_count = 0;
+    size_t total_samples = 1000;
+    #pragma omp parallel for
+    for (size_t i = 0; i < total_samples; i++) {
+        wangshash gen(i);
+        std::normal_distribution<float> norm_dis(0, 1); // 均值为0，标准差为1的正态分布
+        float sample = norm_dis(gen);
+        if (sample >= -3.0f && sample <= 3.0f) { // 0.99759的样本在[-3, 3]范围内
+            within_range_count++;
+        }
+        // printf("%f\n", norm_dis(gen));
+    }
+    float proportion_within_range = static_cast<float>(within_range_count) / total_samples;
+    EXPECT_GT(proportion_within_range, 0.99f);
+}
+
+TEST(WANGSHash, GenerateSample) {
     std::vector<int> a(100);
     std::generate(a.begin(), a.end(), 
         [gen = wangshash(0), dis = std::uniform_int_distribution<int>(0, 100)]
@@ -138,9 +178,12 @@ void wangshash_random() {
             return dis(gen);
         });
     for (auto i : a) {
-        printf("%d\n", i);
+        EXPECT_IN_RANGE(i, 0, 100);
+        // printf("%d\n", i);
     }
+}
 
+TEST(WANGSHash, GenerateSample2) {
     std::vector<int> b;
     b.reserve(100);
     std::generate_n(std::back_inserter(b), 100, 
@@ -149,26 +192,35 @@ void wangshash_random() {
             return dis(gen);
         });
     for (auto i : b) {
-        printf("%d\n", i);
+        EXPECT_IN_RANGE(i, 0, 100);
+        // printf("%d\n", i);
     }
 }
 
-void shuffle_cpp_random() {
-    std::vector<int> c;
-    std::iota(c.begin(), c.end(), 0);
-    // std::mt19937 gen;
+TEST(WANGSHash, Shuffle) {
+    std::vector<int> original(10);
+    std::iota(original.begin(), original.end(), 0);
+
+    std::vector<int> shuffled = original;
+     // std::mt19937 gen;
     // xorshift32 gen;
     wangshash gen;
-    std::shuffle(c.begin(), c.end(), gen); // 随机洗牌
-    for (auto i : c) {
-        printf("%d\n", i);
+    std::shuffle(shuffled.begin(), shuffled.end(), gen);
+
+    bool is_different = false;
+    for (size_t i = 0; i < original.size(); ++i) {
+        if (original[i] != shuffled[i]) {
+            is_different = true;
+            break;
+        }
     }
+
+    EXPECT_TRUE(is_different) << "The shuffle operation did not change the order of elements.";
 }
-#include <map>
-#include <sstream>
-void simulation() {
+
+TEST(RandomTest, Simulation) {
     std::vector<float> prob = {0.45f, 0.25f, 0.15f, 0.1f, 0.05f};
-    // std::vector<float> prob_scanned = {0.45f, 0.7f, 0.85f, 0.95f, 1.0f}; // prob的前缀和
+    std::vector<float> expected_prob_scanned = {0.45f, 0.7f, 0.85f, 0.95f, 1.0f}; // prob的前缀和 
 
     // std::vector<float> prob_scanned(5);
     // std::inclusive_scan(prob.begin(), prob.end(), prob_scanned.begin());
@@ -176,7 +228,8 @@ void simulation() {
     std::vector<float> prob_scanned;
     std::inclusive_scan(prob.begin(), prob.end(), std::back_inserter(prob_scanned));
     for (size_t i = 0; i < prob_scanned.size(); i++) {
-        printf("%f\n", prob_scanned[i]);
+        ASSERT_NEAR(expected_prob_scanned[i], prob_scanned[i], 1e-6) << "Prefix sum mismatch at index " << i;
+        // printf("%f\n", prob_scanned[i]);
     }
     std::vector<std::string> face = {"Support", "Tank", "Mage", "Assassin", "Shooter"};
     std::mt19937 gen{std::random_device{}()};
@@ -197,9 +250,12 @@ void simulation() {
         */
     };
     std::map<std::string, int> counts;
-    for (size_t i = 0; i < 100; i++) {
+    const int total_samples = 1000000;
+    for (size_t i = 0; i < total_samples; i++) {
         std::string result = gen_face();
-        printf("%s\n", result.c_str());
+        ASSERT_NE(result, ""); // Ensure result is not empty
+        ASSERT_TRUE(std::find(face.begin(), face.end(), result) != face.end()) << "Unexpected result: " << result;
+        // printf("%s\n", result.c_str());
         counts[result]++;
     }
     // auto it = counts.begin();
@@ -225,6 +281,7 @@ void simulation() {
     
 
     std::ostringstream oss;
+    oss << "total samples: " << total_samples << "\n";
     for (size_t i = 0; i < face.size(); ++i) {
         if (i != 0) {
             oss << ", ";
@@ -234,14 +291,7 @@ void simulation() {
     std::cout << oss.str() << std::endl;
 }
 
-int main() {
-    // c_random();
-    // cpp_random();
-    // multi_thread_c_random();
-    // multi_thread_cpp_random();
-    // xorshift32_random();
-    // wangshash_random();
-    // shuffle_cpp_random();
-    simulation();
-    return 0;
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

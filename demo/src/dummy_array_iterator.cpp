@@ -6,6 +6,7 @@
 #include <functional>
 #include <algorithm>
 #include <cassert>
+#include "gtest_prompt.h"
 
 template <typename T, size_t const Size>
 class dummy_array_iterator {
@@ -308,81 +309,109 @@ private:
     Type _data[SIZE] = {};
 };
 
-void test_dummy_array() {
-    const size_t SIZE = 5;
-    dummy_array<int, SIZE> arr;
+const size_t SIZE = 5;
 
-    // 测试赋值和随机访问
+void initializeArray(dummy_array<int, SIZE>& arr) {
     for (size_t i = 0; i < SIZE; ++i) {
         arr[i] = i + 1;
     }
+}
+
+TEST(DummyArrayTest, TestAssignmentAndAccess) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
 
     for (size_t i = 0; i < SIZE; ++i) {
-        assert(arr[i] == i + 1);
+        ASSERT_EQ(arr[i], i + 1);
     }
+}
 
-    // 测试正向迭代
+TEST(DummyArrayTest, TestForwardIteration) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
     size_t index = 0;
     for (auto it = arr.begin(); it != arr.end(); ++it) {
-        assert(*it == arr[index++]);
+        ASSERT_EQ(*it, arr[index++]);
     }
+}
 
-    // 测试反向迭代
-    index = SIZE;
+TEST(DummyArrayTest, TestReverseIteration) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
+    size_t index = SIZE;
     for (auto it = arr.rbegin(); it != arr.rend(); ++it) {
-        assert(*it == arr[--index]);
+        ASSERT_EQ(*it, arr[--index]);
     }
+}
 
-    // 测试常量迭代
+TEST(DummyArrayTest, TestConstForwardIteration) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
     const dummy_array<int, SIZE>& carr = arr;
-    index = 0;
+    size_t index = 0;
     for (auto it = carr.begin(); it != carr.end(); ++it) {
-        assert(*it == carr[index++]);
+        ASSERT_EQ(*it, carr[index++]);
     }
+}
 
-    // 测试常量反向迭代
-    index = SIZE;
+TEST(DummyArrayTest, TestConstReverseIteration) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
+    const dummy_array<int, SIZE>& carr = arr;
+    size_t index = SIZE;
     for (auto it = carr.crbegin(); it != carr.crend(); ++it) {
-        assert(*it == carr[--index]);
+        ASSERT_EQ(*it, carr[--index]);
     }
+}
 
-    // 测试随机访问迭代器
+TEST(DummyArrayTest, TestRandomAccessIterator) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
     auto it = arr.begin();
-    assert(*(it + 2) == arr[2]);
-    assert(*(it - (-2)) == arr[2]);
-    assert((it + 2) - it == 2);
-    assert(it[2] == arr[2]);
+    ASSERT_EQ(*(it + 2), arr[2]);
+    ASSERT_EQ(*(it - (-2)), arr[2]);
+    ASSERT_EQ((it + 2) - it, 2);
+    ASSERT_EQ(it[2], arr[2]);
 
     it += 2;
-    assert(*it == arr[2]);
+    ASSERT_EQ(*it, arr[2]);
     it -= 2;
-    assert(*it == arr[0]);
+    ASSERT_EQ(*it, arr[0]);
+}
 
-    // 测试边界检查
+TEST(DummyArrayTest, TestOutOfRange) {
+    dummy_array<int, SIZE> arr;
+    initializeArray(arr);
+
     try {
         auto bad_it = arr.begin() + SIZE;
-        ++bad_it; // 应该抛出异常
-        assert(false); // 不应该到达这里
-    } catch (const std::out_of_range& e) {
-        // 正确处理
+        ++bad_it; // Should throw an exception
+        FAIL() << "Expected std::out_of_range";
+    } catch (const std::out_of_range&) {
+        // Expected exception
     }
 
     try {
         auto bad_it = arr.begin() - 1;
-        --bad_it; // 应该抛出异常
-        assert(false); // 不应该到达这里
-    } catch (const std::out_of_range& e) {
-        // 正确处理
+        --bad_it; // Should throw an exception
+        FAIL() << "Expected std::out_of_range";
+    } catch (const std::out_of_range&) {
+        // Expected exception
     }
-
-    // 测试 size 和 empty
-    assert(arr.size() == SIZE);
-    assert(!arr.empty());
-
-    std::cout << "All tests passed!" << std::endl;
 }
 
-int main() {
-    test_dummy_array();
-    return 0;
+TEST(DummyArrayTest, TestSizeAndEmpty) {
+    dummy_array<int, SIZE> arr;
+    ASSERT_EQ(arr.size(), SIZE);
+    ASSERT_FALSE(arr.empty());
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

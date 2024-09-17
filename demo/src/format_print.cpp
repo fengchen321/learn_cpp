@@ -1,12 +1,15 @@
 #include <iostream>
 #include "minilog.h"
+#include "gtest_prompt.h"
+
 #if __has_include(<format>) && __cplusplus >= 202002L
-void test_format() {
+
+TEST(FormatPrint, FormatTest) {
     auto s = std::format("{:0>+10.4f}", 13.14);
-    std::cout << s << "\n";
+    EXPECT_EQ(s, "00+13.1400");
 }
 
-void test_log() {
+TEST(FormatPrint, MiniLogTest) {
     // log_info("hello, the answer is {}", 42);
     minilog::log_Info("hello, the answer is {}", 42);
     minilog::log_Critical("this is right-aligned [{:>+10.04f}]", 3.14);
@@ -24,18 +27,23 @@ void test_log() {
 #undef _FUNCTION
 }
 #else
-void test_format() {
+TEST(FormatPrint, FormatTest) {
     std::cout << "not support std::format" << "\n";
 }
-void test_log() {
+
+TEST(FormatPrint, MiniLogTest) {
     std::cout << "not support std::format" << "\n";
 }
+
 #endif
-void test_source_location() {
+
+TEST(FormatPrint, SourceLocationTest) {
     auto sl = std::source_location::current();
     printf("line = %d, colum=%d, file=%s,func=%s\n", 
         sl.line(), sl.column(), sl.file_name(), sl.function_name()
     );
+    EXPECT_EQ(sl.line(), __LINE__ - 4); 
+    EXPECT_STREQ(sl.file_name(), __FILE__);
 }
 
 void log(std::string msg, std::source_location sl = std::source_location::current()) {
@@ -44,11 +52,12 @@ void log(std::string msg, std::source_location sl = std::source_location::curren
     );
 }
 
-int main() {
-    test_format();
-    test_source_location();
+TEST(FormatPrint, LogFuncTest) {
     log("hello world"); // 默认参数计算的位置在调用者位置
     log("hello world");
-    test_log();
-    return 0;
+}
+
+int main(int argc, char** argv) {
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
