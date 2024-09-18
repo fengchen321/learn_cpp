@@ -8,7 +8,7 @@
 #include <source_location>
 
 #if __has_include(<format>) && __cplusplus >= 202002L
-#include <format>  // ubuntu -> g++ 12.2 <format>目前尚不包含, 13.1可以
+#include <format>  // ubuntu -> g++ 12.2 <format>目前尚不包含 -> gcc13.1, clang17
 
 namespace minilog {
     
@@ -43,7 +43,7 @@ inline constexpr char k_reset_ansi_color[4] = "\E[m";
 #define _MINILOG_IF_HAS_ANSI_COLORS(x) x
 #else
 #define _MINILOG_IF_HAS_ANSI_COLORS(x)
-inline constexpr char k_level_ansi_colors[(std::uint8_t)log_level::fatal + 1][1] = {
+inline constexpr char k_level_ansi_colors[(std::uint8_t)log_level::Fatal + 1][1] = {
     "",
     "",
     "",

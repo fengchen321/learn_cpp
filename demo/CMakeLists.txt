@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 project(demo)
-
+# set(CMAKE_PREFIX_PATH "../third_party/googletest/build/install" ${CMAKE_PREFIX_PATH})
 find_package(GTest REQUIRED)
 include_directories(
     include
