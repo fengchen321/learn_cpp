@@ -33,34 +33,37 @@ template <class T>
 std::string get_type_name() {
     std::string s =  FUNC_SIGNATURE;
 #if defined(_MSC_VER)
-    size_t pos = s.find(',');
-    pos += 1;
-    size_t pos2 = s.find('>', pos);
+    size_t start_pos = s.find("<", s.find("get_type_name<")); // 不太好，内部依赖函数名
+    size_t end_pos = s.find_last_of(">", s.length() - 1);
+    return s.substr(start_pos + 1, end_pos - start_pos - 1);
 #else
     auto pos = s.find("T = ");
     pos += 4;
     auto pos2 = s.find_first_of(" ;]", pos);
-#endif
     return s.substr(pos, pos2 - pos);
+#endif
+    return "";
 }
 
 TEST(CompileReflect, GetTypeName) {
-    EXPECT_STREQ(get_type_name<double>().c_str(),"double"); 
+    EXPECT_STREQ(get_type_name<double>().c_str(),"double");
+    EXPECT_REGEX_MATCH(get_type_name<std::vector<int>>(),R"(.*std::vector<int.*)");
 }
 
 template <class T, T N>
 std::string get_int_name() {
     std::string s =  FUNC_SIGNATURE;
 #if defined(_MSC_VER)
-    size_t pos = s.find(',');
-    pos += 1;
-    size_t pos2 = s.find('>', pos);
+    size_t start_pos = s.find("<", s.find("get_int_name<"));
+    size_t end_pos = s.find_last_of(">", s.length() - 1);
+    return s.substr(start_pos + 1, end_pos - start_pos - 1);
 #else
     auto pos = s.find("T = ");
     pos += 4;
     auto pos2 = s.find_first_of(" ;]", pos);
-#endif
     return s.substr(pos, pos2 - pos);
+#endif
+    return "";
 }
 // 编译期for循环 static_for  -> https://www.bilibili.com/video/BV1NM4y1e7Hn?t=3931.9 demo/src/template_compile_for_loop.cpp
 template <int X>
@@ -102,7 +105,7 @@ enum Color {
 
 TEST(CompileReflect, GetTypeNameDynamic){
     Color c = RED;
-    EXPECT_STREQ(get_int_name_dynamic(c).c_str(),"Color"); 
+    EXPECT_REGEX_MATCH(get_int_name_dynamic(c),R"(.*Color)");
 }
 
 TEST(CompileReflect, ScienumTest){

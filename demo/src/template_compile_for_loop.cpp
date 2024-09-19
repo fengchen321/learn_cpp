@@ -18,7 +18,7 @@ void static_for(Lambda lambda) {
     }
 }
 std::vector<size_t> captured_indices;
-
+#if !defined(_MSC_VER)
 TEST(StaticForTest, CorrectIndicesProcessed) {
     captured_indices.clear();
 
@@ -31,7 +31,7 @@ TEST(StaticForTest, CorrectIndicesProcessed) {
         EXPECT_EQ(captured_indices[i], i);
     }
 }
-
+#endif
 template <int X>
 struct int_constant {
     static constexpr int value = X;

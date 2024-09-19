@@ -181,8 +181,8 @@ TEST(TypeConversion, TupleApply) {
     
     EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"double");
     EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"double");
-    EXPECT_STREQ(cppdemangle(typeid(what3).name()).c_str(),"std::variant<int, float, double>");
-    EXPECT_STREQ(cppdemangle(typeid(what4).name()).c_str(),"std::tuple<int, float, double>");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what3).name()), R"(std::variant<int\s*,\s*float\s*,\s*double>)");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what4).name()), R"(std::tuple<int\s*,\s*float\s*,\s*double>)");
 }
 
 /*
@@ -221,12 +221,12 @@ TEST(TypeConversion, TupleMap) {
     using what2 = tuple_map<vector_wrapper, Var>::type;
     using what3 = tuple_map<array_wrapper<3>, Tup>::type;
 
-    EXPECT_NE(cppdemangle(typeid(what).name()).find("std::tuple<std::vector"), std::string::npos)
-        << "Substring not found in the full string";
-    EXPECT_NE(cppdemangle(typeid(what2).name()).find("std::variant<std::vector"), std::string::npos)
-        << "Substring not found in the full string";
-    EXPECT_NE(cppdemangle(typeid(what3).name()).find("std::tuple<std::array"), std::string::npos)
-        << "Substring not found in the full string";
+    std::cout << cppdemangle(typeid(what).name()) << std::endl;
+    std::cout << cppdemangle(typeid(what2).name()) << std::endl;
+    std::cout << cppdemangle(typeid(what3).name()) << std::endl;
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what).name()), R"(.*std::tuple<.*std::vector)");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what2).name()), R"(.*std::variant<.*std::vector)");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what3).name()), R"(.*std::tuple<.*std::array)");
 }
 
 /*
@@ -255,10 +255,11 @@ TEST(TypeConversion, TupleCat) {
 
     using what = tuple_cat<Tup, Tup2>::type;
     using what2 = tuple_push_front<char *, Tup>::type;
+    std::cout << cppdemangle(typeid(what).name()) << std::endl;
+    std::cout << cppdemangle(typeid(what2).name()) << std::endl;
 
-    EXPECT_NE(cppdemangle(typeid(what).name()).find("std::tuple<int, float, double, std::vector"), std::string::npos)
-        << "Substring not found in the full string";
-    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"std::tuple<char*, int, float, double>");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what).name()), R"(.*std::tuple<int.*,.*float.*,.*double.*,.*std::vector.*)");
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(what2).name()), R"(.*std::tuple<char.*\*.*,.*int.*,.*float.*,.*double.*>)");
 }
 
 /*

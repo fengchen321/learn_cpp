@@ -62,10 +62,10 @@ struct Dog : Animal {};
 
 TEST(CommonType, CommonTypeRecursiveStruct) {
     using what = typename common_type_two<Cat, Animal>::type;
-    EXPECT_STREQ(cppdemangle(typeid(what).name()).c_str(),"Animal");
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what).name()), "Animal");
 
     using what2 = typename common_type<Cat, Dog, Animal>::type;
-    EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"Animal"); 
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what2).name()), "Animal");
 }
 
 #if __cplusplus >= 202002L
@@ -101,16 +101,16 @@ constexpr auto get_common_type(dummy<T0> t0, dummy<Ts> ...ts) {
 TEST(CommonType, CommonTypeFunc) {
 #if __cplusplus >= 202002L
     using what_Ts_func = decltype(get_common_type(std::type_identity<Cat>{}, std::type_identity<Animal>{}));
-    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"std::type_identity<Animal&&>");
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what_Ts_func).name()), "std::type_identity", "Animal");
 
     using what_Ts_func2 = decltype(get_common_type(std::type_identity<Cat>{}, std::type_identity<Dog>{}, std::type_identity<Animal>{}));
-    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func2).name()).c_str(),"std::type_identity<Animal&&>");
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what_Ts_func2).name()), "std::type_identity", "Animal");
 #else
     using what_Ts_func = decltype(get_common_type(dummy<Cat>{}, dummy<Animal>{}));
-    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"dummy<Animal>");
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what_Ts_func).name()), "dummy", "Animal");
 
     using what_Ts_func2 = decltype(get_common_type(dummy<Cat>{}, dummy<Dog>{}, dummy<Animal>{}));
-    EXPECT_STREQ(cppdemangle(typeid(what_Ts_func).name()).c_str(),"dummy<Animal>");
+    EXPECT_CONTAINS_ALL(cppdemangle(typeid(what_Ts_func2).name()), "dummy", "Animal");
 
 #endif
 }

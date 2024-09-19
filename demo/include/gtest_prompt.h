@@ -2,6 +2,10 @@
 #define LEARN_CPP_GTEST_PROMPT_H
 
 #include <gtest/gtest.h>
+#include <vector>
+#include <string>
+#include <regex>
+
 #define ASSERT_LOGS_EXCEPTION(expression, expected_message) \
     do {                                                      \
         try {                                                \
@@ -45,5 +49,30 @@
     EXPECT_GE(value, lower) << "Value " << value << " is less than " << lower << "."; \
     EXPECT_LE(value, upper) << "Value " << value << " is greater than " << upper << ".";
 
+// 自定义宏来检查多个子字符串
+#define EXPECT_CONTAINS_ALL(actual, ...) do {                    \
+    std::vector<std::string> expected_substrings = {__VA_ARGS__}; \
+    for (const auto& substr : expected_substrings) {             \
+        EXPECT_NE(actual.find(substr), std::string::npos);      \
+    }                                                              \
+} while (0)
+
+#define EXPECT_REGEX_MATCH(actual, pattern) do {                     \
+    std::regex regex_pattern(pattern);                                \
+    EXPECT_TRUE(std::regex_search(actual, regex_pattern));           \
+} while (0)
+
+#define ASSERT_REGEX_STDOUT(expression, pattern) \
+    do { \
+        try { \
+            testing::internal::CaptureStdout(); \
+            expression; \
+            std::string output = testing::internal::GetCapturedStdout(); \
+            std::cout << output << std::endl;    \
+            EXPECT_REGEX_MATCH(output, pattern);  \
+        } catch (...) { \
+            FAIL() << "Exception thrown while executing the expression."; \
+        } \
+    } while (0)
 
 #endif //LEARN_CPP_GTEST_PROMPT_H
