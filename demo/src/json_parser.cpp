@@ -6,6 +6,7 @@
 #include <string_view>
 #include <charconv>
 #include <regex>
+#include <optional>
 
 struct JSONObject;
 using JSONList = std::vector<JSONObject>;
@@ -401,38 +402,68 @@ TEST(JSONParse, GetPObject) {
     auto const &school = dict.at("school");
     auto dovisit = [&] (auto &dovisit, JSONObject const &school) -> void {
         std::visit([&] (auto const &school) {
-            if constexpr (std::is_same_v<std::decay_t<decltype(school)>, JSONList>) {
+            using T = std::decay_t<decltype(school)>;
+            if constexpr (std::is_same_v<T, JSONList>) {
                 for (auto const &item : school)
                     dovisit(dovisit, item); // 递归调用
+            } else if constexpr (std::is_same_v<T, JSONDict>) {
+                for (auto const &pair : school) {
+                    std::cout << "\"" << pair.first << "\": ";
+                    dovisit(dovisit, *pair.second);
+                }
             } else {
-                // school.do_print();
+                std::cout << school << "\n"; // 打印其他类型的值
             }
         }, school.inner);
     };
-    dovisit(dovisit, *school);
-
+    ASSERT_LOGS_STDOUT(dovisit(dovisit, *school), "985\n211\n1\n");
 }
 
 TEST(JSONParse, Overloaded) {
     std::string_view str = R"JSON({"number": 985.211, "text": "hello"})JSON";
     auto [obj, eaten] = parse(str);
-    // obj.do_print();
-    // std::visit(
-    //     overloaded{
-    //         [&] (int val) {
-    //             std::cout << "int is:" << val << std::endl;
-    //         },
-    //         [&] (double val) {
-    //             std::cout << "double is:" << val << std::endl;
-    //         },
-    //         [&] (const std::string& val) {
-    //             std::cout << "string is:" << val << std::endl;
-    //         },
-    //         [&] (auto val) {
-    //             // print("unknown object is:", val);
-    //         },
-    //     },
-    //     obj.inner);
+    std::visit(
+        overloaded{
+            [](std::nullptr_t) {
+                std::cout << "null" << std::endl;
+            },
+            [](bool b) {
+                std::cout << (b ? "true" : "false") << std::endl;
+            },
+            [](int i) {
+                std::cout << i << std::endl;
+            },
+            [](double d) {
+                std::cout << d << std::endl;
+            },
+            [](const std::string& str) {
+                std::cout << "\"" << str << "\"" << std::endl;
+            },
+            [](const JSONList& list) {
+                std::cout << "[";
+                for (size_t i = 0; i < list.size(); ++i) {
+                    list[i].do_print();
+                    if (i < list.size() - 1) {
+                        std::cout << ", ";
+                    }
+                }
+                std::cout << "]" << std::endl;
+            },
+            [](const JSONDict& dict) {
+                std::cout << "{";
+                auto it = dict.begin();
+                while (it != dict.end()) {
+                    std::cout << "\"" << it->first << "\": ";
+                    it->second->do_print();
+                    ++it;
+                    if (it != dict.end()) {
+                        std::cout << ", ";
+                    }
+                }
+                std::cout << "}" << std::endl;
+            }
+        },
+        obj.inner);
 }
 
 int main(int argc, char** argv) {

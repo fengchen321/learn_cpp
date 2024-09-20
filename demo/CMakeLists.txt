@@ -53,4 +53,6 @@ create_executable(format_print SOURCE_FILES src/format_print.cpp LINK_LIBS ${COM
 create_executable(random_generation SOURCE_FILES src/random_generation.cpp LINK_LIBS ${COMMON_GTEST_LIBS}) 
 create_executable(value_category SOURCE_FILES src/value_category.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(template_compile_reflect SOURCE_FILES src/template_compile_reflect.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
-create_executable(json_parser SOURCE_FILES src/json_parser.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
+if(NOT MSVC)
+    create_executable(json_parser SOURCE_FILES src/json_parser.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
+endif()

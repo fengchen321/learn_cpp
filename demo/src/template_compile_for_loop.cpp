@@ -155,7 +155,8 @@ TEST(StaticForTest, TupMap) {
     }, tup);
 
     EXPECT_EQ(std::get<0>(res), 43);
-    EXPECT_NEAR(std::get<1>(res), 4.14f, 1e-5f);
+    // EXPECT_NEAR(std::get<1>(res), 4.14f, 1e-5f);
+    ASSERT_FLOAT_EQ(std::get<1>(res), 4.14f);
 }
 
 template <class Lambda, class Tup, size_t ...Is>
@@ -173,12 +174,12 @@ TEST(StaticForTest, TupApply) {
     auto res_tupapply = tup_apply([] (auto ...xs) { 
         return (xs + ...); 
     }, tup);
-    EXPECT_NEAR(res_tupapply, 45.14f, 1e-5f);
+    ASSERT_FLOAT_EQ(res_tupapply, 45.14f);
 
     auto res_tupapply2 = tup_apply([] (int i, float f) { 
         return (i + f); 
     }, tup);
-    EXPECT_NEAR(res_tupapply2, 45.14f, 1e-5f);
+    ASSERT_FLOAT_EQ(res_tupapply2, 45.14f);
 }
 
 /*
