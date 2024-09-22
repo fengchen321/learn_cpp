@@ -1,12 +1,6 @@
-//
-// Created by lsfco on 2024/9/7.
-//
-#include <cstdio>
+#pragma once
+
 #include <type_traits>
-#include <string>
-#include <vector>
-#include "print.h"
-#include "gtest_prompt.h"
 /*
  * decltype 配合 decay_t 一起使用
  * std::is_same_v<std::decay_t<decltype(t)>, int>
@@ -27,15 +21,6 @@ auto func(T const &t) {
     }
 }
 
-TEST(FuncTest, DiffInput) {
-    int i = 0;
-    EXPECT_EQ(func(i), 1);
-    double d = 0.0;
-    EXPECT_EQ(func(d), 1.0);
-    std::string s = "hello";
-    EXPECT_EQ(func(s), "hello world");
-}
-
 /*
  * std::is_same_v<decltype(f()), void> -> std::is_void_v<decltype(f())> 或者 std::is_void_v<std::invoke_result_t<F>>
  * 或者 std::is_void_v<decltype(std::declval<F>()())>
@@ -51,21 +36,6 @@ auto invoke(F f) {
     }
 }
 
-TEST(InvokeTest, ReturnTypeInt) {
-    int result = invoke([]() -> int {
-        return 42;
-    });
-    EXPECT_EQ(result, 42);
-}
-
-TEST(InvokeTest, ReturnTypeVoid) {
-    bool called = false;
-    invoke([&]() -> void {
-        called = true;
-    });
-    EXPECT_TRUE(called);
-}
-
 #define REQUIRES(x) std::enable_if_t<(x), int> = 0
 template <class F, REQUIRES(std::is_void_v<std::invoke_result_t<F>>)>
 auto separate_invoke(F f){
@@ -77,44 +47,9 @@ auto separate_invoke(F f){
     return result;
 }
 
-TEST(SeparateInvokeTest, ReturnTypeInt) {
-    int result = separate_invoke([]() -> int {
-        return 42;
-    });
-    EXPECT_EQ(result, 42);
-}
-
-TEST(SeparateInvokeTest, ReturnTypeVoid) {
-    bool called = false;
-    separate_invoke([&]() -> void {
-        called = true;
-    });
-    EXPECT_TRUE(called);
-}
-
 /*
  * 判断是否具有特定成员函数
  */
-struct mystudent {
-    void dismantle() {
-        print("student dismantle");
-    }
-    void rebel(int i) {
-        print("student rebel ", i);
-    }
-};
-struct myteacher {
-    void rebel(int i) {
-        print("teacher rebel ", i);
-    }
-};
-struct myclass {
-    void dismantle() {
-        print("class dismantle");
-    }
-};
-struct myvoid {};
-
 template <class T, class = void>
 struct has_dismantle {
     static constexpr bool value = false;
@@ -143,7 +78,7 @@ void gench(T t) {
         }
     }
     else {
-        print("no any method supported!");
+        printf("%s\n", "no any method supported!");
     }
 
 }
@@ -160,22 +95,6 @@ void gench(T t) {
 }
 template <class T, REQUIRES(!has_dismantle<T>::value && !has_rebel<T>::value)>
 void gench(T t) {
-    print("no any method supported!");
+    printf("%s\n", "no any method supported!");
 }
 #endif
-
-TEST(JudgeMemberFunc, Gench) {
-    mystudent s;
-    myteacher t;
-    myclass c;
-    myvoid v;
-    ASSERT_LOGS_STDOUT(gench(s), "student dismantle");
-    ASSERT_LOGS_STDOUT(gench(t), "teacher rebel  1\nteacher rebel  2\nteacher rebel  3\nteacher rebel  4");
-    ASSERT_LOGS_STDOUT(gench(c), "class dismantle");
-    ASSERT_LOGS_STDOUT(gench(v), "no any method supported!");
-}
-
-int main(int argc, char** argv) {
-    ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
-}

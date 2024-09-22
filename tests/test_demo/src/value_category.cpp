@@ -1,6 +1,6 @@
-#include <iostream>
-#include "cppdemangle.h"
 #include "gtest_prompt.h"
+#include "cppdemangle.h"
+#include <iostream>
 
 #if defined(_MSC_VER)
     #define FUNC_SIGNATURE __FUNCSIG__
@@ -28,13 +28,12 @@ TEST(ValueCategory, ValueTest) {
     ASSERT_REGEX_STDOUT(func(a), R"(void.*func\(const\s*int\s*&\))");  // lvalue  void func(const int&)
 }
 
-struct S {
-    int a;
-    int &b;
-    int &&c;
-};
-
 TEST(ValueCategory, StructTest) {
+    struct S {
+        int a;
+        int &b;
+        int &&c;
+    };
     int a = 1, b = 1, c = 1;
     S s{a, b, std::move(c)};
 
@@ -47,41 +46,40 @@ TEST(ValueCategory, StructTest) {
     ASSERT_REGEX_STDOUT(func(s.c), R"(void.*func\(const\s*int\s*&\))");  // （s.c）左值表达式 "void func(const int&)
 }
 
-struct S2 {
-    int a;
-    int getA() const & {
-        printf("%s\n", FUNC_SIGNATURE);
-        return a;
-    }
-
-    int getA() & {
-        printf("%s\n", FUNC_SIGNATURE);
-        return a;
-    }
-
-    int getA() const && {
-        printf("%s\n", FUNC_SIGNATURE);
-        return a;
-    }
-
-    int getA() && {
-        printf("%s\n", FUNC_SIGNATURE);
-        return a;
-    }
-};
-
 TEST(ValueCategory, Struct2Test) {
-    EXPECT_STREQ(cppdemangle<decltype(S2().a)>().c_str(),"int"); // // 临时对象的成员变量 prvalue
-    EXPECT_STREQ(cppdemangle<decltype((S2().a))>().c_str(),"int &&"); // //xvalue
-    ASSERT_REGEX_STDOUT(S2().getA(), R"(int.*S2::getA\(.*\)\s*&&)");  // int S2::getA() &&
+    struct S {
+        int a;
+        int getA() const & {
+            printf("%s\n", FUNC_SIGNATURE);
+            return a;
+        }
 
-    S2 s;
-    ASSERT_REGEX_STDOUT(s.getA(), R"(int.*S2::getA\(.*\)\s*&)");  // int S2::getA() &
-    ASSERT_REGEX_STDOUT(std::move(s).getA(), R"(int.*S2::getA\(.*\)\s*&&)"); // int S2::getA() &&
+        int getA() & {
+            printf("%s\n", FUNC_SIGNATURE);
+            return a;
+        }
 
-    const S2 cs2{};
-    ASSERT_REGEX_STDOUT(cs2.getA();, R"(int.*S2::getA\(.*\)\s*const\s*&)");  // int S2::getA() const &
-    ASSERT_REGEX_STDOUT(std::move(cs2).getA(), R"(int.*S2::getA\(.*\)\s*const\s*&&)"); // int S2::getA() const &&
+        int getA() const && {
+            printf("%s\n", FUNC_SIGNATURE);
+            return a;
+        }
+
+        int getA() && {
+            printf("%s\n", FUNC_SIGNATURE);
+            return a;
+        }
+    };
+    EXPECT_STREQ(cppdemangle<decltype(S().a)>().c_str(),"int"); // // 临时对象的成员变量 prvalue
+    EXPECT_STREQ(cppdemangle<decltype((S().a))>().c_str(),"int &&"); // //xvalue
+    ASSERT_REGEX_STDOUT(S().getA(), R"(int.*S::getA\(.*\)\s*&&)");  // int S::getA() &&
+
+    S s;
+    ASSERT_REGEX_STDOUT(s.getA(), R"(int.*S::getA\(.*\)\s*&)");  // int S::getA() &
+    ASSERT_REGEX_STDOUT(std::move(s).getA(), R"(int.*S::getA\(.*\)\s*&&)"); // int S::getA() &&
+
+    const S cs{};
+    ASSERT_REGEX_STDOUT(cs.getA();, R"(int.*S::getA\(.*\)\s*const\s*&)");  // int S::getA() const &
+    ASSERT_REGEX_STDOUT(std::move(cs).getA(), R"(int.*S::getA\(.*\)\s*const\s*&&)"); // int S::getA() const &&
 
 }
 

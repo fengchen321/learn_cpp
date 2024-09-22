@@ -1,22 +1,9 @@
-#include <array>
-#include <type_traits>
-#include <iostream>
-#include <variant>
-#include <vector>
-#include "prompt.h"
-#include "print.h"
 #include "gtest_prompt.h"
+#include "prompt.h"
+#include "template_compile_for_loop.h"
+#include <vector>
+#include <variant>
 
-/*
-* 编译期 for循环
-*/
-template <size_t Beg, size_t End, class Lambda>
-void static_for(Lambda lambda) {
-    if constexpr (Beg < End) {
-        lambda.template operator()<Beg>();
-        static_for<Beg + 1, End>(lambda);
-    }
-}
 std::vector<size_t> captured_indices;
 #if !defined(_MSC_VER)
 TEST(StaticForTest, CorrectIndicesProcessed) {
@@ -32,27 +19,6 @@ TEST(StaticForTest, CorrectIndicesProcessed) {
     }
 }
 #endif
-template <int X>
-struct int_constant {
-    static constexpr int value = X;
-};
-
-template <size_t Beg, size_t End, class Lambda>
-void static_for_1(Lambda lambda) {
-    if constexpr (Beg < End) {
-        std::integral_constant<size_t, Beg> i; 
-        // int_constant<Beg> i; // 或者自己实现is_constant
-        if constexpr (std::is_void_v<std::invoke_result_t<Lambda, decltype(i)>>) {
-            lambda(i);
-        }
-        else {
-            if (lambda(i)) {
-                return; // 提前打断
-            }
-        }
-        static_for_1<Beg + 1, End>(lambda);
-    }
-}
 
 TEST(StaticForTest, IntConstant) {
     captured_indices.clear();
@@ -99,16 +65,6 @@ TEST(StaticForTest, VariantSample) {
     });
 }
 
-template <size_t ...Is, class Lambda>
-void _static_for_impl(Lambda lambda, std::index_sequence<Is...>){
-    (lambda(std::integral_constant<size_t, Is>{}), ...);
-}
-
-template <size_t N, class Lambda>
-void static_for_2(Lambda lambda) {
-    _static_for_impl(lambda, std::make_index_sequence<N>{});
-}
-
 TEST(StaticForTest, IndexSequence) {
     captured_indices.clear();
     static_for_2<4>([&](auto i){
@@ -121,33 +77,6 @@ TEST(StaticForTest, IndexSequence) {
     }
 }
 
-// 编译器for循环应用 tup_map; 枚举反射也是
-#if 1
-template <class Lambda, class ...Ts>
-auto tup_map(Lambda lambda, std::tuple<Ts...> tup) {
-    std::tuple<std::invoke_result_t<Lambda, Ts>...> res;
-    static_for_2<sizeof...(Ts)>([&] (auto i) {
-        std::get<i.value>(res) = lambda(std::get<i.value>(tup));
-    });
-    return res;
-}
-#else
-template <class Lambda, class Tup, size_t ...Is>
-auto _tup_map_impl(Lambda lambda, Tup tup, std::index_sequence<Is...>) {
-    return std::tuple<std::invoke_result_t<Lambda, std::tuple_element_t<Is, Tup>>...>{
-        lambda(std::get<Is>(tup))...
-    };
-}
-template <class Lambda, class Tup>
-auto tup_map(Lambda lambda, Tup tup) {
-    return _tup_map_impl(lambda, tup, std::make_index_sequence<std::tuple_size_v<Tup>>{});
-    /* {lambda(std::get<Is>(tup))...} */ // ...在括号外面
-    /* {lambda(get<0>(tup)), lambda(get<1>(tup)), ...} */
-    /* lambda(std::get<Is>(tup)...) */ // ...在括号里面
-    /* lambda(get<0>(tup), get<1>(tup), ...) */
-}
-#endif
-
 TEST(StaticForTest, TupMap) {
     std::tuple<int, float> tup = {42, 3.14f};
     auto res = tup_map([](auto v){
@@ -157,16 +86,6 @@ TEST(StaticForTest, TupMap) {
     EXPECT_EQ(std::get<0>(res), 43);
     // EXPECT_NEAR(std::get<1>(res), 4.14f, 1e-5f);
     ASSERT_FLOAT_EQ(std::get<1>(res), 4.14f);
-}
-
-template <class Lambda, class Tup, size_t ...Is>
-auto _tup_apply_impl(Lambda lambda, Tup tup, std::index_sequence<Is...>) {
-    return lambda(std::get<Is>(tup)...);
-}
-
-template <class Lambda, class Tup>
-auto tup_apply(Lambda lambda, Tup tup) {
-    return _tup_apply_impl(lambda, tup, std::make_index_sequence<std::tuple_size_v<Tup>>{});
 }
 
 TEST(StaticForTest, TupApply) {
@@ -182,32 +101,6 @@ TEST(StaticForTest, TupApply) {
     ASSERT_FLOAT_EQ(res_tupapply2, 45.14f);
 }
 
-/*
-* 通过Breaker对象控制循环的提前终止
-*/
-template <size_t Beg, size_t End, class Lambda>
-void static_for_3(Lambda lambda) {
-    if constexpr (Beg < End) {
-        std::integral_constant<size_t, Beg> i;
-        struct Breaker {
-            bool *m_broken;
-            constexpr void static_break() const {
-                *m_broken = true;
-            }
-        };
-        if constexpr (std::is_invocable_v<Lambda, decltype(i), Breaker>) {
-            bool broken = false;
-            lambda(i, Breaker{&broken});
-            if (broken) {
-                return;
-            }
-        }
-        else {
-            lambda(i);
-        }
-        static_for_3<Beg + 1, End>(lambda);
-    }
-}
 TEST(StaticForTest, StaticforBreaker) {
     std::variant<int, float, double, char> var = {'b'};
     static_for_3<0, 4>([&](auto i, auto ctrl){
