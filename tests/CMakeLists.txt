@@ -1,6 +1,3 @@
-enable_testing()
-# ctest -R ${name} -V / --verbose
-# ./demo/format_print --gtest_filter=FormatPrint.MiniLogTest
 set(gtest_SOURCE_DIR ${CMAKE_SOURCE_DIR}/../third_party/googletest)
 if(EXISTS ${gtest_SOURCE_DIR})
     message(STATUS "Using local Google Test from ${gtest_SOURCE_DIR}")

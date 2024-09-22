@@ -22,4 +22,7 @@ endif()
 
 add_subdirectory(demo)
 add_subdirectory(stl)
+enable_testing()
+# ctest -R ${name} -V / --verbose
+#  ./tests/test_demo/format_print --gtest_filter=FormatPrint.MiniLogTest
 add_subdirectory(tests)
