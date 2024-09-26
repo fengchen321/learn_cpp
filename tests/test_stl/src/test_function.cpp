@@ -194,6 +194,22 @@ TEST(TestFunction, CppFunction4) {
     }));
 }
 
+void repeat_func8(MoveOnlyFunction<void(int)> const &func) {
+    func(1);
+    func(2);
+}
+
+TEST(TestFunction, CppFunction5) {
+    int x = 2, y = 3;
+    func_num_parms_t a{x, y};
+    repeat_func8(a);
+
+    repeat_func8([&](int i) {
+        printf("#%d num is %d, %d\n", i, x, y); 
+    });
+}
+
+
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();

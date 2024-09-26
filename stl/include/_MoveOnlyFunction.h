@@ -1,3 +1,10 @@
+#pragma once
+
+#include <utility>
+#include <memory>
+#include <type_traits>
+#include <functional>
+
 template <class _FnSig>
 struct MoveOnlyFunction {
     // 只在使用了不符合 Ret(Args...) 模式的 FnSig 时会进入此特化，导致报错
@@ -20,9 +27,6 @@ private:
         template <class ..._CArgs>
         explicit _FuncImpl(std::in_place_t, _CArgs &&...__args) : _M_f(std::forward<_CArgs>(__args)...) {}
 
-        // 处理函数指针的构造函数
-        explicit _FuncImpl(const _Fn& f) : _M_f(f) {}
-
         _Ret _M_call(_Args ...__args) override {
             // 完美转发所有参数给构造时保存的仿函数对象：
             // return _M_f(std::forward<Args>(__args)...);
@@ -41,7 +45,7 @@ public:
     // MoveOnlyFunction 不要求支持拷贝
     template <class _Fn, class = std::enable_if_t<std::is_invocable_r_v<_Ret, _Fn &, _Args...>>>
     MoveOnlyFunction(_Fn __f) // 没有 explicit，允许 lambda 表达式隐式转换成 MoveOnlyFunction
-    : _M_base(std::make_unique<_FuncImpl<_Fn>>(std::in_place, std::forward<_Fn>(__f)))
+    : _M_base(std::make_unique<_FuncImpl<_Fn>>(std::in_place, std::move(__f)))
     {}
 
     // 就地构造的版本
