@@ -5,3 +5,5 @@ include_directories(
 create_executable(dummy_array_iterator SOURCE_FILES src/test_dummy_array_iterator.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_function SOURCE_FILES src/test_function.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_uniqueptr SOURCE_FILES src/test_uniqueptr.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
+create_executable(test_memory_resource SOURCE_FILES src/test_memory_resource.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
+
