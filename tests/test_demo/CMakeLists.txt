@@ -18,3 +18,4 @@ create_executable(template_compile_reflect SOURCE_FILES src/test_template_compil
 if(NOT MSVC)
     create_executable(json_parser SOURCE_FILES src/test_json_parser.cpp LINK_LIBS ${COMMON_GTEST_LIBS} demo_lib)
 endif()
+create_executable(test_ptr_lifecycle SOURCE_FILES src/test_ptr_lifecycle.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
