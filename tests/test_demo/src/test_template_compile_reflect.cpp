@@ -29,7 +29,8 @@ TEST(CompileReflect, ScienumTest){
     std::string s = scienum::get_enum_name<Color, (Color)1, (Color)3>(RED);
     EXPECT_STREQ(s.c_str(),"RED");
 
-    ASSERT_THROW_EXCEPTION(scienum::enum_from_name<Color>("xxx"), "Invalid enum name");
+    ASSERT_THROW(scienum::enum_from_name<Color>("xxx"), std::invalid_argument);
+    // ASSERT_THROW_EXCEPTION(scienum::enum_from_name<Color>("xxx"), "Invalid enum name");
 }
 
 
