@@ -1,6 +1,7 @@
 #include "gtest_prompt.h"
 #include "Array.h"
 
+
 void fillArray(Array<int, 32> &a) {
     for (size_t i = 0; i < 32; i++) {
         a[i] = i;
@@ -46,12 +47,32 @@ TEST(ArrayTest, GetSize) {
     func_size(a);
 }
 
-TEST(ArrayTest, Iterator) {
-    Array<int, 32> a; 
-    fillArray(a);
-    for (auto it = a.begin(); it != a.end(); ++it) {
-        ASSERT_EQ(*it, it - a.begin());
-    }
+TEST(ArrayTest, Iterators) {
+    Array<int, 5> nums{1, 2, 4, 8, 16};
+
+    auto print_nums = [&nums]() {
+        for (auto it = nums.begin(); it != nums.end(); ++it) {
+            std::cout << *it << " ";
+        }
+        std::cout << std::endl;
+        for (auto it = nums.rbegin(); it != nums.rend(); ++it) {
+            std::cout << *it << " ";
+        }
+        std::cout << std::endl;
+    };
+
+    auto print_const_nums = [&nums]() {
+        for (auto it = nums.cbegin(); it != nums.cend(); ++it) {
+            std::cout << *it << " ";
+        }
+        std::cout << std::endl;
+        for (auto it = nums.crbegin(); it != nums.crend(); ++it) {
+            std::cout << *it << " ";
+        }
+        std::cout << std::endl;
+    };
+    ASSERT_LOGS_STDOUT(print_nums(), "1 2 4 8 16 \n16 8 4 2 1 \n");
+    ASSERT_LOGS_STDOUT(print_const_nums(), "1 2 4 8 16 \n16 8 4 2 1 \n");
 }
 
 TEST(ArrayTest, Fill) {
