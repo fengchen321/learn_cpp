@@ -471,32 +471,16 @@ public:
         return _M_data + _M_size;
     }
 
-    iterator cbegin() noexcept {
-        return _M_data;
-    }
-
     const_iterator cbegin() const noexcept {
         return _M_data;
-    }
-
-    iterator cend() noexcept {
-        return _M_data + _M_size;
     }
 
     const_iterator cend() const noexcept {
         return _M_data + _M_size;
     }
     
-	reverse_iterator crbegin() noexcept {
-        return std::make_reverse_iterator(_M_data + _M_size);
-    }
-
     const_reverse_iterator crbegin() const noexcept {
         return std::make_reverse_iterator(_M_data + _M_size);
-    }
-
-    reverse_iterator crend() noexcept {
-        return std::make_reverse_iterator(_M_data);
     }
 
     const_reverse_iterator crend() const noexcept {
@@ -507,15 +491,7 @@ public:
         return std::make_reverse_iterator(_M_data + _M_size);
     }
 
-    const_reverse_iterator rbegin() const noexcept {
-        return std::make_reverse_iterator(_M_data + _M_size);
-    }
-
     reverse_iterator rend() noexcept {
-        return std::make_reverse_iterator(_M_data);
-    }
-
-    const_reverse_iterator rend() const noexcept {
         return std::make_reverse_iterator(_M_data);
     }
 

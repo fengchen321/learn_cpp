@@ -8,7 +8,6 @@
 
 
 TEST(VectorTest, Size) {
-    // std::vector<int> vec;
     Vector<int> vec;
     ASSERT_EQ(vec.size(), 0);
     ASSERT_EQ(vec.capacity(), 0);
@@ -342,7 +341,7 @@ TEST(VectorTest, ShrinkToFit) {
 }
 
 TEST(VectorTest, Iterators) {
-    std::vector<int> nums{1, 2, 4, 8, 16};
+    Vector<int> nums{1, 2, 4, 8, 16};
 
     auto print_nums = [&nums]() {
         for (auto it = nums.begin(); it != nums.end(); ++it) {
