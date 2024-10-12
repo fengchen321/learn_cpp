@@ -55,6 +55,11 @@ TEST(TypeConversion, TupleApply) {
     EXPECT_STREQ(cppdemangle(typeid(what2).name()).c_str(),"double");
     EXPECT_REGEX_MATCH(cppdemangle(typeid(what3).name()), R"(std::variant<int\s*,\s*float\s*,\s*double>)");
     EXPECT_REGEX_MATCH(cppdemangle(typeid(what4).name()), R"(std::tuple<int\s*,\s*float\s*,\s*double>)");
+
+    using Object = std::variant<int, double, std::string>;
+    using ObjectVec = tuple_map<vector_wrapper, Object>::type;
+    using ObjectList = tuple_apply<tuple_wrapper, ObjectVec>::type;
+    EXPECT_REGEX_MATCH(cppdemangle(typeid(ObjectList).name()), R"(std::tuple<std::vector<int,)");
 }
 
 TEST(TypeConversion, TupleMap) {
