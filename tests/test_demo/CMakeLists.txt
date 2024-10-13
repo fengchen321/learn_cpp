@@ -22,3 +22,4 @@ create_executable(test_ptr_lifecycle SOURCE_FILES src/test_ptr_lifecycle.cpp LIN
 create_executable(test_template_map_fold SOURCE_FILES src/test_template_map_fold.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_CRTP SOURCE_FILES src/test_CRTP.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(hexdump_tool SOURCE_FILES src/hexdump_tool.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
+create_executable(api_design SOURCE_FILES src/api_design.cpp LINK_LIBS ${COMMON_GTEST_LIBS}) #CXX_STANDARD 20)
