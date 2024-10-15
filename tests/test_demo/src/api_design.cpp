@@ -16,18 +16,18 @@ TEST(APIDesignTest, StructualParameter) {
 }
 
 // 强类型转换
-struct FileHandle {
+struct FileHandle_ {
     int _handle;
-    explicit FileHandle(int handle) : _handle(handle) {}
+    explicit FileHandle_(int handle) : _handle(handle) {}
 };
 
 TEST(APIDesignTest, StrongTypeEncapsulation) {
-    auto read = [](FileHandle handle, char *buf, size_t len) -> ssize_t {
+    auto read = [](FileHandle_ handle, char *buf, size_t len) -> ssize_t {
         return len / 2;
     };
 
     constexpr auto TEST_FD = 123;
-    FileHandle fh(TEST_FD);
+    FileHandle_ fh(TEST_FD);
     char buffer[64];
     ssize_t result = read(fh, buffer, sizeof(buffer));
     ASSERT_EQ(result, sizeof(buffer) / 2);
@@ -87,12 +87,12 @@ struct has_data_size<Arr,
 // 封装指针和长度
 TEST(APIDesignTest, SpanTest) {
     // Span 本身就是一个对原缓冲区的引用，直接传入 read 内部一样可以修改缓冲区
-    auto read = [](FileHandle handle, Span buf) -> ssize_t {
+    auto read = [](FileHandle_ handle, Span buf) -> ssize_t {
         return buf.len / 2;
     };
 
     constexpr auto TEST_FD = 123;
-    FileHandle fh(TEST_FD);
+    FileHandle_ fh(TEST_FD);
     char buffer[64];
     ssize_t result = read(fh, Span{buffer});
     ASSERT_EQ(result, sizeof(buffer) / 2);
@@ -202,6 +202,192 @@ TEST(APIDesignTest, SpanTTest) {
     SpanT span5(arr_int);
     ASSERT_EQ(span5.size, arr_int.size());
     ASSERT_EQ(span5.data, arr_int.data());
+
+    int arr1[32];
+    SpanT span6(arr1);
+    ASSERT_EQ(span6.size, 32);
+
+}
+// 空值语义
+#include <optional>
+TEST(APIDesignTest, OptionalTest) {
+    struct BookInfo {
+        std::string title;
+        std::string author;
+    };
+
+    struct ISBN {
+        std::string number;
+        bool operator<(const ISBN& other) const {
+            return number < other.number;
+        }
+    };
+
+    std::map<ISBN, BookInfo> bookDatabase = {
+        {{"1"}, {"C++ Programming", "Bjarne Stroustrup"}},
+        {{"2"}, {"Effective C++", "Scott Meyers"}}
+    };
+
+    auto foo = [&](ISBN isbn) -> std::optional<BookInfo> {
+        auto it = bookDatabase.find(isbn);
+        if (it != bookDatabase.end()) {
+            return it->second;
+        } else {
+            return std::nullopt;
+        }
+    };
+
+    ISBN isbn{"1"};
+    std::optional<BookInfo> result = foo(isbn);
+    ASSERT_TRUE(result.has_value());
+    EXPECT_EQ(result->title, "C++ Programming");
+    EXPECT_EQ(result->author, "Bjarne Stroustrup");
+    EXPECT_EQ((*result).title, "C++ Programming");
+    EXPECT_EQ((*result).author, "Bjarne Stroustrup");
+
+    BookInfo book1 = foo(isbn).value();
+    EXPECT_EQ(book1.title, "C++ Programming");
+    EXPECT_EQ(book1.author, "Bjarne Stroustrup");
+
+    ASSERT_THROW(foo(ISBN{"x"}).value(), std::bad_optional_access);
+
+    // 指定找不到时的默认值
+    BookInfo book2 = foo(ISBN{"x"}).value_or(BookInfo{"default", "default"});
+    EXPECT_EQ(book2.title, "default");
+    EXPECT_EQ(book2.author, "default"); 
+}
+#include <string_view>
+#include <charconv>
+#include <functional>
+TEST(APIDesignTest, OptionalTest1) {
+    auto parseInt = [](std::string_view sv) -> std::optional<int> {
+        int value;
+        auto result = std::from_chars(sv.data(), sv.data() + sv.size(), value);
+        if (result.ec == std::errc())
+            return value;
+        else
+            return std::nullopt;
+    };
+
+    ASSERT_TRUE(parseInt("-1"));
+    ASSERT_FALSE(parseInt("s"));
+
+    char perfGeek[2] = {'-', '1'};
+    ASSERT_TRUE(parseInt(std::string_view{perfGeek, 2}));
+    EXPECT_EQ(parseInt(std::string_view{perfGeek, 2}).value(), -1);
+}
+// 强类型枚举
+TEST(APIDesignTest, EnumTest) {
+    enum class Sex : uint8_t {
+        Female = 0,
+        Male = 1,
+        Custom = 2,
+    };
+
+    ASSERT_TRUE(sizeof(Sex) == 1);
+
+}
+
+// 此处使用 CRTP 模式是为了让 Typed 每次都实例化出不同的基类，阻止 object-slicing
+template <class CRTP, class T>
+struct Typed {
+protected:
+    T value;
+
+public:
+    explicit operator T() const {
+        return value;
+    }
+
+    explicit Typed(T value) : value(value) {}
+};
+
+struct Meter : Typed<Meter, double> {
+    explicit Meter(double value) : Typed<Meter, double>(value) {}
+};
+
+struct Kilometer : Typed<Kilometer, double> {
+    explicit Kilometer(double value) : Typed<Kilometer, double>(value) {}
+    operator Meter() const {
+        return Meter(value * 1000);
+    }
+};
+
+TEST(APIDesignTest, OtherTypeTest1) {
+    Meter m = Kilometer(1.0);
+    EXPECT_DOUBLE_EQ(static_cast<double>(m), 1000.0);
+}
+
+#include <memory>       // std::shared_ptr
+#include <filesystem>     // std::filesystem::path
+#include <map>          // std::map
+#include <cstdio>       // fopen, fclose, _wfopen
+#include <optional>     // std::optional
+#include <cerrno>       // std::errc
+// #include <span>         // std::span
+using FileHandle = std::shared_ptr<FILE>;
+enum class OpenMode {
+    Read,
+    Write,
+    Append,
+};
+
+inline OpenMode operator|(OpenMode a, OpenMode b) {
+    return OpenMode(static_cast<int>(a) | static_cast<int>(b));
+}
+
+auto modeLut = std::map<OpenMode, std::string>{
+    {OpenMode::Read, "r"},
+    {OpenMode::Write, "w"},
+    {OpenMode::Append, "a"},
+    {OpenMode::Read | OpenMode::Write, "w+"},
+    {OpenMode::Read | OpenMode::Append, "a+"},
+};
+
+FileHandle file_open(std::filesystem::path path, OpenMode mode) {
+#ifdef _WIN32
+    return std::shared_ptr<FILE>(_wfopen(path.wstring().c_str(), modeLut.at(mode).c_str()), fclose);
+#else
+    return std::shared_ptr<FILE>(fopen(path.string().c_str(), modeLut.at(mode).c_str()), fclose);
+#endif
+}
+
+struct FileResult {
+    std::optional<size_t> numElements;
+    std::errc errorCode;  // std::errc 是个强类型枚举，用于取代 C 语言 errno 的 int 类型
+    bool isEndOfFile;
+};
+
+template <class T>
+FileResult file_read(FileHandle file, SpanT<T> elements) { // std::span<T> data() size()
+    auto n = fread(elements.data, sizeof(T), elements.size, file.get());
+    return {
+        .numElements = (n == 0) ? std::nullopt : std::optional<size_t>(n),
+        .errorCode = std::errc(ferror(file.get())),
+        .isEndOfFile = (bool)feof(file.get()),
+    };
+}
+#include <fstream>
+TEST(APIDesignTest, RAII) {
+    const char* filename = "a.txt";
+    std::ofstream txtfile(filename);
+    txtfile << "helloworldhelloworldhelloworld\n";
+    txtfile.close();
+
+    std::filesystem::path filePath("a.txt");
+    ASSERT_TRUE(std::filesystem::exists(filePath));
+
+    FileHandle file = file_open(filePath, OpenMode::Read);
+    ASSERT_NE(file.get(), nullptr);
+
+    char arr[12];
+    auto result = file_read(file, SpanT(arr));
+
+    ASSERT_TRUE(result.numElements.has_value());
+    size_t numElements = result.numElements.value();
+    ASSERT_EQ(numElements, 12);
+
+    remove(filename);
 }
 
 int main(int argc, char** argv) {
