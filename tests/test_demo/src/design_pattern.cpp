@@ -376,7 +376,7 @@ TEST(DesignPatternTest, FactoryTest) {
 */
 struct ReducerState {
     virtual void accumulate(int val) = 0;
-    virtual int result() = 0;
+    virtual double result() = 0;
     virtual void merge(const ReducerState& other) = 0;
 };
 
@@ -385,15 +385,15 @@ struct Reducer1 {
 };
 
 struct SumReducerState : ReducerState {
-    int res;
+    long long res;
     SumReducerState() : res(0) {}
 
     void accumulate(int val) override {
         res += val;
     }
 
-    int result() override {
-        return res;
+    double result() override {
+        return static_cast<double>(res);
     }
 
     void merge(const ReducerState& other) override {
@@ -405,15 +405,15 @@ struct SumReducerState : ReducerState {
 };
 
 struct ProductReducerState : ReducerState {
-    int res;
+    long long res;
     ProductReducerState() : res(1) {}
 
     void accumulate(int val) override {
         res *= val;
     }
 
-    int result() override {
-        return res;
+    double result() override {
+        return static_cast<double>(res);
     }
 
     void merge(const ReducerState& other) override {
@@ -425,7 +425,7 @@ struct ProductReducerState : ReducerState {
 };
 
 struct AverageReducerState : ReducerState {
-    int res;
+    long long res;
     int count;
     AverageReducerState() : res(0), count(0) {}
 
@@ -434,8 +434,8 @@ struct AverageReducerState : ReducerState {
         count++;
     }
 
-    int result() override {
-        return count > 0 ? res / count : 0;;
+    double result() override {
+        return count > 0 ? res / static_cast<double>(count) : 0.0;
     }
 
     void merge(const ReducerState& other) override {
@@ -447,12 +447,12 @@ struct AverageReducerState : ReducerState {
     }
 };
 
-template<class S>
+template<class R>
 struct RudecerwithState: Reducer1 {
-    static_assert(std::is_base_of<ReducerState, S>::value, "R must be a subclass of ReducerState");
+    static_assert(std::is_base_of<ReducerState, R>::value, "R must be a subclass of ReducerState");
 
     std::unique_ptr<ReducerState> init() override {
-        return std::make_unique<S>();
+        return std::make_unique<R>();
     }
 };
 
@@ -474,7 +474,7 @@ struct RudecerwithState: Reducer1 {
 //     }
 // };
 
-int reduce_3(std::unique_ptr<Inputer> inputer, std::unique_ptr<Reducer1> reducer) {
+double reduce_3(std::unique_ptr<Inputer> inputer, std::unique_ptr<Reducer1> reducer) {
     std::unique_ptr<ReducerState> state = reducer->init();
     while (auto val = inputer->fetch()) {
         state->accumulate(*val);
@@ -485,45 +485,45 @@ int reduce_3(std::unique_ptr<Inputer> inputer, std::unique_ptr<Reducer1> reducer
 TEST(DesignPatternTest, virtualTest_6_vec) {
     std::vector<int> vec(10);
     std::iota(vec.begin(), vec.end(), 1);
-    ASSERT_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<SumReducerState>>()), 55);
-    ASSERT_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10), 
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<SumReducerState>>()), 55.0);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10.0), 
         std::make_unique<RudecerwithState<SumReducerState>>()), 45);  // std::make_unique<SumReducer1>()
 
-    ASSERT_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<ProductReducerState>>()), 3628800);
-    ASSERT_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10), 
-        std::make_unique<RudecerwithState<ProductReducerState>>()), 362880);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<ProductReducerState>>()), 3628800.0);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10.0), 
+        std::make_unique<RudecerwithState<ProductReducerState>>()), 362880.0);
 
-    ASSERT_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<AverageReducerState>>()), 5); // 55 / 10 = 5
-    ASSERT_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10), 
-        std::make_unique<RudecerwithState<AverageReducerState>>()), 5); // 45 /9 = 5
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<AverageReducerState>>()), 5.5);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<StopInputerAdapter>(std::make_unique<VectorInputer>(vec), 10.0), 
+        std::make_unique<RudecerwithState<AverageReducerState>>()), 5.0);
 }
 
 TEST(DesignPatternTest, virtualTest_6_cin) {
     std::istringstream input("1 2 3 4 5 -1");
     std::cin.rdbuf(input.rdbuf()); // 重定向 cin 的输入
-    ASSERT_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<SumReducerState>>()), 15); 
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<SumReducerState>>()), 15.0); 
 
     std::istringstream input2("1 2 3 4 5 -1"); 
     std::cin.rdbuf(input2.rdbuf());
-    ASSERT_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<ProductReducerState>>()), 120);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<ProductReducerState>>()), 120.0);
 
     std::istringstream input3("1 2 3 4 5 -1"); 
     std::cin.rdbuf(input3.rdbuf());
-    ASSERT_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<AverageReducerState>>()), 3);
+    ASSERT_DOUBLE_EQ(reduce_3(std::make_unique<CinInputer>(), std::make_unique<RudecerwithState<AverageReducerState>>()), 3.0);
 
     // 恢复 cin 的缓冲区
     std::cin.clear();
     std::cin.rdbuf(nullptr);
 }
+// https://godbolt.org/z/8GW3zqPrY
+double reduce_4(std::unique_ptr<Inputer> inputer,std::unique_ptr<Reducer1> reducer) {
+    std::list<std::unique_ptr<ReducerState>> local_states; // Store local states
+    std::vector<int> chunk;          // Buffer for the current chunk
+    std::mutex mutex;               // Protect local states with a mutex
+    const size_t chunk_size = 64;   // Chunk size
+    std::vector<std::future<void>> futures; // Store futures for asynchronous tasks
 
-int reduce_4(std::unique_ptr<Inputer> inputer,std::unique_ptr<Reducer1> reducer) {
-    std::list<std::unique_ptr<ReducerState>> local_states; // 存储局部状态
-    std::vector<int> chunk;         // 存储输入数据的块
-    std::mutex mutex;               // 保护局部状态的互斥锁
-    const size_t chunk_size = 64;   // 每个线程处理的块大小
-    std::vector<std::future<void>> futures; // 存储所有线程的 future
-
-    // 将任务分配给线程的 lambda 函数
+    // Process a chunk of data
     auto process_chunk = [&local_states, &mutex, &reducer](std::vector<int> chunk) {
         auto local_state = reducer->init();
         for (int value : chunk) {
@@ -535,12 +535,11 @@ int reduce_4(std::unique_ptr<Inputer> inputer,std::unique_ptr<Reducer1> reducer)
     };
 
     while (auto tmp = inputer->fetch()) {
-        if (chunk.size() < chunk_size) {
-            chunk.push_back(*tmp);
-        } else {
+        if (chunk.size() >= chunk_size) {
             futures.push_back(std::async(std::launch::async, process_chunk, std::move(chunk)));
             chunk.clear();
         }
+        chunk.push_back(*tmp);
     }
 
     if (!chunk.empty()) {
@@ -554,21 +553,21 @@ int reduce_4(std::unique_ptr<Inputer> inputer,std::unique_ptr<Reducer1> reducer)
     auto final_state = reducer->init();
     for (const auto& local_state : local_states) {
         // final_state->accumulate(local_state->result()); // 合并结果的时候应该要合并 ReduceSate 本身而不是合并 ReduceState 的结果
-        final_state->merge(*local_state); 
+        final_state->merge(*local_state);
     }
     return final_state->result();
 }
 
 TEST(DesignPatternTest, virtualTest_7_vec) {
-    int res = 0;
-    std::vector<int> vec(100000);
+    double res = 0;
+    std::vector<int> vec(66);
     std::iota(vec.begin(), vec.end(), 1);
     for (int i = 0; i < vec.size(); i++) {
         res += vec[i];
     }
     std::cout << res << " " << res / vec.size() << std::endl;
-    ASSERT_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<SumReducerState>>()), res);
-    ASSERT_EQ(reduce_3(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<AverageReducerState>>()), res / vec.size());
+    ASSERT_DOUBLE_EQ(reduce_4(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<SumReducerState>>()), res);
+    ASSERT_DOUBLE_EQ(reduce_4(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<AverageReducerState>>()), res / vec.size());
 }
 
 int main(int argc, char** argv) {
