@@ -91,7 +91,7 @@ struct Inputer {
 int reduce_2(std::unique_ptr<Inputer> inputer, std::unique_ptr<Reducer> reducer) {
     int res = reducer->init();
     while (auto tmp = inputer->fetch()) {
-        res = reducer->accumulate(res, *tmp);
+        res = reducer->accumulate(res, tmp.value());
     }
     return res;
 }
@@ -232,7 +232,7 @@ struct FilterInputerAdapter : Inputer {
             if (!tmp.has_value()) {
                 return std::nullopt;
             }
-            if (strategy->shouldPass(*tmp)) {
+            if (strategy->shouldPass(tmp.value())) {
                 return tmp;
             }
         }
@@ -539,7 +539,7 @@ double reduce_4(std::unique_ptr<Inputer> inputer,std::unique_ptr<Reducer1> reduc
             futures.push_back(std::async(std::launch::async, process_chunk, std::move(chunk)));
             chunk.clear();
         }
-        chunk.push_back(*tmp);
+        chunk.push_back(tmp.value());
     }
 
     if (!chunk.empty()) {
@@ -569,6 +569,297 @@ TEST(DesignPatternTest, virtualTest_7_vec) {
     ASSERT_DOUBLE_EQ(reduce_4(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<SumReducerState>>()), res);
     ASSERT_DOUBLE_EQ(reduce_4(std::make_unique<VectorInputer>(vec), std::make_unique<RudecerwithState<AverageReducerState>>()), res / vec.size());
 }
+
+/*
+* 单例模式 ： 饿汉模式，懒汉模式
+*/
+
+// 饿汉式
+class Singlehungry {
+private:
+    Singlehungry() = default;
+    Singlehungry(const Singlehungry&) = delete;
+    Singlehungry& operator=(const Singlehungry&) = delete;
+public:
+    static std::shared_ptr<Singlehungry> GetInstance() {
+        if (singleton == nullptr) {
+            singleton = std::shared_ptr<Singlehungry>(new Singlehungry);
+            // 不能std：：make_shared，因为构造函数是私有的
+        }
+        return singleton;
+    }
+private:
+    static std::shared_ptr<Singlehungry> singleton;
+};
+// 饿汉式初始化
+std::shared_ptr<Singlehungry> Singlehungry::singleton = Singlehungry::GetInstance();
+
+// 懒汉式
+class Singletonlazy {
+private:
+    Singletonlazy() = default;
+    Singletonlazy(const Singletonlazy&) = delete;
+    Singletonlazy& operator=(const Singletonlazy&) = delete;
+public:
+    static std::shared_ptr<Singletonlazy> GetInstance() {
+        if (singleton == nullptr) {
+            std::lock_guard<std::mutex> lock(mutex);
+            if (singleton == nullptr) {
+                singleton = std::shared_ptr<Singletonlazy>(new Singletonlazy);
+            }
+        }
+        return singleton;
+}
+private:
+    static std::shared_ptr<Singletonlazy> singleton;
+    static std::mutex mutex;
+};
+std::shared_ptr<Singletonlazy> Singletonlazy::singleton = nullptr;
+std::mutex Singletonlazy::mutex;
+
+// call_once
+template <typename T>
+class Singleton {
+private:
+    Singleton() = default;
+    Singleton(const Singleton<T>&) = delete;
+    Singleton& operator=(const Singleton<T>&) = delete;
+public:
+    static std::shared_ptr<T> GetInstance() {
+        std::call_once(_flag, [&]() {
+            singleton = std::shared_ptr<T>(new T);
+        });
+        return singleton;
+    }
+private:
+    static std::shared_ptr<T> singleton;
+    static std::once_flag _flag;
+};
+
+template <typename T>
+std::shared_ptr<T> Singleton<T>::singleton = nullptr;
+
+template <typename T>
+std::once_flag Singleton<T>::_flag;
+
+class TestClass {};
+
+template <typename SingletonType>
+void TestSingletonThreadSafe() {
+    // const int numThreads = std::thread::hardware_concurrency();
+    const int numThreads = 10;
+    std::vector<std::thread> threads;
+    for (int i = 0; i < numThreads; ++i) {
+        threads.emplace_back([](){
+            auto instance = SingletonType::GetInstance();
+            ASSERT_EQ(instance, SingletonType::GetInstance());
+        });
+    }
+    for (auto& thread : threads) {
+        thread.join();
+    }
+}
+
+TEST(DesignPatternTest, Singleton_thread_safe) {
+    TestSingletonThreadSafe<Singletonlazy>();
+    TestSingletonThreadSafe<Singlehungry>();
+    TestSingletonThreadSafe<Singleton<TestClass>>();
+}
+
+/*
+* 模板模式 ： 共同的部分集中到一个基类，把不同的细节部分留给子类实现。
+* 当一个对象涉及很多策略时，用策略模式；
+* 当只需要一个策略，且需要用到基类的成员时，用模板模式。
+*/
+
+class Character {
+protected: // 子类可以访问,外部不可访问
+    virtual void draw() const = 0;
+    virtual void move() const = 0;
+public:
+    void update() const {
+        move();
+        move();
+        draw();
+    }
+};
+
+class Player : public Character {
+protected: 
+    void draw() const override {
+        puts(__PRETTY_FUNCTION__);
+    }
+    void move() const override {
+        puts(__PRETTY_FUNCTION__);
+    }
+};
+class Enemy : public Character {
+protected: 
+    void draw() const override {
+        puts(__PRETTY_FUNCTION__);
+    }
+    void move() const override {
+        puts(__PRETTY_FUNCTION__);
+    }
+};
+
+class Game {
+public:
+    std::vector<std::shared_ptr<Character>> characters;
+    void update() {
+        for (auto& character : characters) {
+            character->update();
+        }
+    }
+};
+
+TEST(DesignPatternTest, TemplatePattern) {
+    Game game;
+    game.characters.emplace_back(std::make_shared<Player>());
+    game.characters.emplace_back(std::make_shared<Enemy>());
+    game.update();
+}
+
+/*
+* 状态模式：将不同状态的处理逻辑分离到不同的类中，用状态对象的虚函数来表示状态的处理逻辑。
+*/
+class Context;
+class State {
+public:
+    virtual void update(std::shared_ptr<Context> context) = 0;
+};
+class ConcreteStateA : public State {
+public:
+    void update(std::shared_ptr<Context> context) override;
+};
+
+class ConcreteStateB : public State {
+public:
+    void update(std::shared_ptr<Context> context) override;
+};
+
+class Context : public std::enable_shared_from_this<Context> {
+private:
+    std::shared_ptr<State> state;
+public:
+    Context() : state(std::make_shared<ConcreteStateA>()) {}
+    void setState(std::shared_ptr<State> state) {
+        this->state = state;
+    }
+    void update() {
+        state->update(shared_from_this());
+    }
+};
+
+void ConcreteStateA::update(std::shared_ptr<Context> context) {
+    puts(__PRETTY_FUNCTION__);
+    if (true) { // 根据条件切换状态
+        context->setState(std::make_shared<ConcreteStateB>());
+    }
+}
+
+void ConcreteStateB::update(std::shared_ptr<Context> context) {
+    puts(__PRETTY_FUNCTION__);
+    if (true) {
+        context->setState(std::make_shared<ConcreteStateA>());
+    }
+}
+
+TEST(DesignPatternTest, StatePattern) {
+    auto context = std::make_shared<Context>();
+    context->setState(std::make_shared<ConcreteStateA>());
+    context->update();
+    context->setState(std::make_shared<ConcreteStateB>());
+    context->update();
+}
+
+/*
+* 原型模式：复制现有的对象，且新对象的属性和类型与原来相同。
+* * 原型模式将对象的拷贝方法作为虚函数，返回一个虚接口的指针，避免了直接拷贝类型。
+* * 但虚函数内部会调用子类真正的构造函数，实现深拷贝
+* 为什么拷贝构造函数不行? 拷贝构造函数只能用于类型确定的情况，对于具有虚函数，可能具有额外成员的多态类型，会发生 object-slicing，导致拷贝出来的类型只是基类的部分，而不是完整的子类对象
+* 为什么拷贝指针不行? 指针的拷贝是浅拷贝，指向的仍然是同一对象
+*/
+
+class Ball {
+    virtual std::unique_ptr<Ball> clone() const = 0;
+};
+
+class RedBall  : public Ball {
+public:
+    std::unique_ptr<Ball> clone() const override {
+        return std::make_unique<RedBall>(*this);
+    }
+};
+
+class BlueBall  : public Ball {
+public:
+    std::unique_ptr<Ball> clone() const override {
+        return std::make_unique<BlueBall>(*this);
+    }
+    int somedate; // 额外成员
+};
+
+TEST(DesignPatternTest, PrototypePattern) {
+    auto redBall = std::make_unique<RedBall>();
+    auto redBall2 = redBall->clone();
+    ASSERT_NE(redBall2, nullptr);
+    ASSERT_EQ(typeid(*redBall2), typeid(RedBall));
+    EXPECT_NE(redBall2.get(), redBall.get());
+
+    auto blueBall = std::make_unique<BlueBall>();
+    blueBall->somedate = 42;
+    auto blueBall2 = blueBall->clone();
+    ASSERT_NE(redBall2, nullptr);
+    ASSERT_EQ(typeid(*blueBall2), typeid(BlueBall));
+    EXPECT_NE(blueBall2.get(), blueBall.get());
+
+    auto blueBall2Ptr = dynamic_cast<BlueBall*>(blueBall2.get());
+    EXPECT_EQ(blueBall2.get(), blueBall2Ptr);
+    EXPECT_EQ(blueBall2Ptr->somedate, 42);
+}
+
+/*
+* CRTP 版本原型模式
+*/
+class CRTPBall {
+    virtual std::unique_ptr<CRTPBall> clone() const = 0;
+};
+
+template <typename Derived>
+class CRTPBallImpl : public CRTPBall {
+public:
+    std::unique_ptr<CRTPBall> clone() const override {
+        Derived* that =  const_cast<Derived*>(static_cast<const Derived*>(this));
+        return std::make_unique<Derived>(*that);
+    }
+};
+class CRTPRedBall  : public CRTPBallImpl<CRTPRedBall> {  
+};
+class CRTPBlueBall  : public CRTPBallImpl<CRTPBlueBall> {
+public:
+    int somedate;
+};
+
+TEST(DesignPatternTest, PrototypePatternCRTP) {
+    auto redBall = std::make_unique<CRTPRedBall>();
+    auto redBall2 = redBall->clone();
+    ASSERT_NE(redBall2, nullptr);
+    ASSERT_EQ(typeid(*redBall2), typeid(CRTPRedBall));
+    EXPECT_NE(redBall2.get(), redBall.get());
+
+    auto blueBall = std::make_unique<CRTPBlueBall>();
+    blueBall->somedate = 42;
+    auto blueBall2 = blueBall->clone();
+    ASSERT_NE(redBall2, nullptr);
+    ASSERT_EQ(typeid(*blueBall2), typeid(CRTPBlueBall));
+    EXPECT_NE(blueBall2.get(), blueBall.get());
+
+    auto blueBall2Ptr = dynamic_cast<CRTPBlueBall*>(blueBall2.get());
+    EXPECT_EQ(blueBall2.get(), blueBall2Ptr);
+    EXPECT_EQ(blueBall2Ptr->somedate, 42);
+}
+
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
