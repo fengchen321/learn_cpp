@@ -860,6 +860,200 @@ TEST(DesignPatternTest, PrototypePatternCRTP) {
     EXPECT_EQ(blueBall2Ptr->somedate, 42);
 }
 
+/*
+* 组合模式
+*
+*/
+class GameObject;
+class Message {
+public:
+    virtual ~Message() = default;
+};
+class MoveMessage : public Message {
+public:
+    int velocitychange = 1;
+};
+
+class Component {
+public:
+    virtual void update(GameObject* g_obj) = 0;
+    virtual void handleMessage(Message *msg) = 0;
+    virtual ~Component() = default; // 确保析构函数是虚函数,以便在删除派生类对象时调用正确的析构函数
+};
+
+class Movable : public Component {
+public:
+    int position = 0;
+    int velocity = 1;
+    int testmessage = 1;
+    void update(GameObject* g_obj) override {
+        position += velocity;
+    }
+
+    void handleMessage(Message *msg) override {
+        if (MoveMessage *mm = dynamic_cast<MoveMessage*>(msg)) {
+            testmessage += mm->velocitychange;
+        }
+    }
+};
+
+class LivingBeing : public Component {
+public:
+    int health = 100;
+    void update(GameObject* g_obj) override {
+        health--;
+    }
+    void handleMessage(Message *msg) override {}
+};
+
+#if 0
+class GameObject {
+public:
+    std::vector<Component*> components;
+    void add(Component* component) {
+        components.push_back(component);
+    }
+    void update() {
+        for (auto&& component : components) {
+            component->update(this);
+        }
+    }
+    // 获取特定类型的组件
+    template<typename T>
+    T* getComponent() {
+        for (auto&& component : components) {
+            if (auto ptr = dynamic_cast<T*>(component)) {
+                return ptr;
+            }
+        }
+        return nullptr;
+    }
+
+    void send(Message* msg) {
+        for (auto&& component : components) {
+            component->handleMessage(msg);
+        }
+    }
+};
+#else
+#include <typeindex>
+class GameObject {
+public:
+    std::unordered_map<std::type_index ,Component*> components;
+    std::vector<Component*> updateOrder; // 存储组件的更新顺序
+    void add(Component* component) {
+        components[typeid(*component)] = component;
+        updateOrder.push_back(component); // 将组件添加到更新顺序中
+    }
+    
+    void update() {
+        for (auto&& component : updateOrder) {
+            component->update(this);
+        }
+    }
+
+    template<typename T>
+    T* getComponent() {
+        if (auto it = components.find(typeid(T)); it != components.end()) {
+            return dynamic_cast<T*>(it->second);
+        } else {
+            return nullptr;
+        }
+    }
+
+    void send(Message* msg) {
+        for (auto&& component : updateOrder) {
+            component->handleMessage(msg);
+        }
+    }
+};
+#endif
+
+class CPlayer : public GameObject {
+public:
+    Movable* movable;
+    LivingBeing* livingBeing;
+    CPlayer() {
+        movable = new Movable();
+        livingBeing = new LivingBeing();
+        add(movable);
+        add(livingBeing);
+    }
+};
+
+GameObject* createPlayer() {
+    GameObject* player = new GameObject();
+    player->add(new Movable());
+    player->add(new LivingBeing());
+    return player;
+}
+
+// 组件之间通信
+class PlayerController : public Component {
+public:
+    void update(GameObject* g_obj) override {
+        Movable* movable = g_obj->getComponent<Movable>();
+        if (!movable) {
+            throw std::runtime_error("No Movable component found in GameObject");
+        }
+        if (movable->testmessage == 1) {
+            MoveMessage mm;
+            mm.velocitychange += 1;
+            g_obj->send(&mm);
+        }
+        if (movable->position > 3) {
+            movable->velocity = -1;
+        }
+    }
+    void handleMessage(Message *msg) override {}
+};
+
+TEST(DesignPatternTest, CompositePattern_createPlayer1) {
+    CPlayer player;
+    player.update();
+    ASSERT_EQ(player.getComponent<Movable>()->position, 1);
+    ASSERT_EQ(player.getComponent<LivingBeing>()->health, 99);
+}
+
+TEST(DesignPatternTest, CompositePattern_createPlayer2) {
+    GameObject* player = createPlayer();
+    player->update();
+    ASSERT_EQ(player->getComponent<Movable>()->position, 1);
+    ASSERT_EQ(player->getComponent<LivingBeing>()->health, 99);
+}
+
+TEST(DesignPatternTest, CompositePattern_PlayerControllerTest) {
+    GameObject* player = createPlayer();
+    player->add(new PlayerController());
+
+    // 更新 3 次，使 position 达到 3
+    for (int i = 0; i < 3; ++i) {
+        player->update();
+    }
+    ASSERT_EQ(player->getComponent<Movable>()->position, 3);
+    ASSERT_EQ(player->getComponent<Movable>()->velocity, 1);
+
+
+    player->update();
+    ASSERT_EQ(player->getComponent<Movable>()->position, 4);
+    ASSERT_EQ(player->getComponent<Movable>()->velocity, -1);
+}
+
+TEST(DesignPatternTest, ObservePattern) {
+    GameObject* player = createPlayer();
+    player->add(new PlayerController());
+    player->update();
+    ASSERT_EQ(player->getComponent<Movable>()->testmessage, 3);
+
+    player->update();
+    ASSERT_EQ(player->getComponent<Movable>()->testmessage, 3);
+
+    MoveMessage mm;
+    mm.velocitychange = 2;
+    player->send(&mm);
+    ASSERT_EQ(player->getComponent<Movable>()->testmessage, 5);
+
+}
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);
