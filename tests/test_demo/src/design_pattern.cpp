@@ -7,6 +7,7 @@
 #include <mutex>
 #include <thread>
 #include <future>
+#include <typeindex>
 
 int sum_0(std::vector<int> v) {
     int res = 0;
@@ -865,60 +866,69 @@ TEST(DesignPatternTest, PrototypePatternCRTP) {
 *
 */
 class GameObject;
-class Message {
+class MoveMessage;
+class HealthMessage;
+class MessageVisitor {
 public:
-    virtual ~Message() = default;
-};
-class MoveMessage : public Message {
-public:
-    int velocitychange = 1;
+    virtual void visit(MoveMessage *mm) = 0;
+    virtual void visit(HealthMessage *hm) = 0;
 };
 
-class Component {
+class Message {
 public:
-    virtual void update(GameObject* g_obj) = 0;
+    virtual void accept(MessageVisitor *visitor) = 0;
+    virtual ~Message() = default;
+};
+
+template <class Derived>
+class MessageImpl : public Message {
+public:
+    void accept(MessageVisitor *visitor) override {
+        static_assert(std::is_base_of_v<MessageImpl, Derived>);
+        visitor->visit(static_cast<Derived*>(this));
+    }
+};
+class MoveMessage : public MessageImpl<MoveMessage> {
+public:
+    int velocitychange = 1;
+    // void accept(MessageVisitor *visitor) override {
+    //     visitor->visit(this); // visit(MoveMessage *mm)
+    // }
+};
+
+class HealthMessage : public MessageImpl<HealthMessage> {
+public:
+    int healthchange = 1;
+    // void accept(MessageVisitor *visitor) override {
+    //     visitor->visit(this); // visit(HealthMessage *hm)
+    // }
+};
+
+class Component : public MessageVisitor {
+public:
+    virtual void update(GameObject *g_obj) = 0;
     virtual void handleMessage(Message *msg) = 0;
+    virtual void subscribeMessages(GameObject *g_obj) = 0;
     virtual ~Component() = default; // 确保析构函数是虚函数,以便在删除派生类对象时调用正确的析构函数
 };
 
-class Movable : public Component {
-public:
-    int position = 0;
-    int velocity = 1;
-    int testmessage = 1;
-    void update(GameObject* g_obj) override {
-        position += velocity;
-    }
 
-    void handleMessage(Message *msg) override {
-        if (MoveMessage *mm = dynamic_cast<MoveMessage*>(msg)) {
-            testmessage += mm->velocitychange;
-        }
-    }
-};
-
-class LivingBeing : public Component {
-public:
-    int health = 100;
-    void update(GameObject* g_obj) override {
-        health--;
-    }
-    void handleMessage(Message *msg) override {}
-};
-
-#if 0
 class GameObject {
 public:
-    std::vector<Component*> components;
+    std::unordered_map<std::type_index, std::vector<Component*>> subscribers;  // 事件总线
+    std::vector<Component*> components; // 存储组件的更新顺序
+
     void add(Component* component) {
-        components.push_back(component);
+        components.push_back(component); // 将组件添加到更新顺序中
+        component->subscribeMessages(this); // 订阅组件的消息
     }
+    
     void update() {
         for (auto&& component : components) {
             component->update(this);
         }
     }
-    // 获取特定类型的组件
+
     template<typename T>
     T* getComponent() {
         for (auto&& component : components) {
@@ -929,64 +939,67 @@ public:
         return nullptr;
     }
 
-    void send(Message* msg) {
-        for (auto&& component : components) {
-            component->handleMessage(msg);
+    template <typename EventType>
+    void subscribe(Component *component) {
+        subscribers[std::type_index(typeid(EventType))].push_back(component);
+    }
+
+    template <typename EventType>
+    void send(EventType *msg) {
+        for (auto &&c: subscribers[std::type_index(typeid(EventType))]) {
+            c->handleMessage(msg);
         }
     }
 };
-#else
-#include <typeindex>
-class GameObject {
+
+class Movable : public Component {
 public:
-    std::unordered_map<std::type_index ,Component*> components;
-    std::vector<Component*> updateOrder; // 存储组件的更新顺序
-    void add(Component* component) {
-        components[typeid(*component)] = component;
-        updateOrder.push_back(component); // 将组件添加到更新顺序中
+    int position = 0;
+    int velocity = 1;
+    int testmessage = 1;
+    void update(GameObject* g_obj) override {
+        position += velocity;
     }
-    
-    void update() {
-        for (auto&& component : updateOrder) {
-            component->update(this);
-        }
+    void subscribeMessages(GameObject* g_obj) {
+        g_obj->subscribe<MoveMessage>(this);
     }
-
-    template<typename T>
-    T* getComponent() {
-        if (auto it = components.find(typeid(T)); it != components.end()) {
-            return dynamic_cast<T*>(it->second);
-        } else {
-            return nullptr;
-        }
+    // void handleMessage(Message *msg) override {
+    //     if (MoveMessage *mm = dynamic_cast<MoveMessage*>(msg)) {
+    //         testmessage += mm->velocitychange;
+    //     }
+    // }
+    void handleMessage(Message *msg) override {
+        msg->accept(this);
     }
-
-    void send(Message* msg) {
-        for (auto&& component : updateOrder) {
-            component->handleMessage(msg);
-        }
+    void visit(MoveMessage *mm) override {
+        testmessage  += mm->velocitychange;
     }
+    void visit(HealthMessage *hm) override {}
 };
-#endif
 
-class CPlayer : public GameObject {
+class LivingBeing : public Component {
 public:
-    Movable* movable;
-    LivingBeing* livingBeing;
-    CPlayer() {
-        movable = new Movable();
-        livingBeing = new LivingBeing();
-        add(movable);
-        add(livingBeing);
+    int health = 100;
+    void update(GameObject* g_obj) override {
+        health--;
+    }
+    void subscribeMessages(GameObject* g_obj) {
+         g_obj->subscribe<HealthMessage>(this);
+    }
+    // void handleMessage(Message *msg) override {
+    //     if (HealthMessage* hm = dynamic_cast<HealthMessage*>(msg)) {
+    //         health += hm->healthchange;
+    //     }
+    // }
+
+    void handleMessage(Message *msg) override {
+        msg->accept(this);
+    }
+    void visit(MoveMessage *mm) override {}
+    void visit(HealthMessage *hm) override {
+        health += hm->healthchange;
     }
 };
-
-GameObject* createPlayer() {
-    GameObject* player = new GameObject();
-    player->add(new Movable());
-    player->add(new LivingBeing());
-    return player;
-}
 
 // 组件之间通信
 class PlayerController : public Component {
@@ -1005,8 +1018,29 @@ public:
             movable->velocity = -1;
         }
     }
+    void subscribeMessages(GameObject* g_obj) {}
     void handleMessage(Message *msg) override {}
+    void visit(MoveMessage *mm) override {}
+    void visit(HealthMessage *hm) override {}
 };
+class CPlayer : public GameObject {
+public:
+    Movable* movable;
+    LivingBeing* livingBeing;
+    CPlayer() {
+        movable = new Movable();
+        livingBeing = new LivingBeing();
+        add(movable);
+        add(livingBeing);
+    }
+};
+
+GameObject* createPlayer() {
+    GameObject* player = new GameObject();
+    player->add(new Movable());
+    player->add(new LivingBeing());
+    return player;
+}
 
 TEST(DesignPatternTest, CompositePattern_createPlayer1) {
     CPlayer player;
@@ -1053,6 +1087,11 @@ TEST(DesignPatternTest, ObservePattern) {
     player->send(&mm);
     ASSERT_EQ(player->getComponent<Movable>()->testmessage, 5);
 
+    ASSERT_EQ(player->getComponent<LivingBeing>()->health, 98);
+    HealthMessage hm;
+    hm.healthchange = 5;
+    player->send(&hm);
+    ASSERT_EQ(player->getComponent<LivingBeing>()->health, 103);
 }
 
 int main(int argc, char** argv) {
