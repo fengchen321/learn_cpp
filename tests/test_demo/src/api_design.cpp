@@ -14,7 +14,119 @@ TEST(APIDesignTest, StructualParameter) {
     };
     foo({.name = "A", .age = 12, .phone = 3456, .address = 7890});
 }
+// 多值返回
+void divide_reference(int dividend, int divisor, int& quotient, int& remainder) {
+    quotient = dividend / divisor;
+    remainder = dividend % divisor;
+}
 
+void divide_point(int dividend, int divisor, int* quotient, int* remainder) {
+    if (quotient) *quotient = dividend / divisor;
+    if (remainder) *remainder = dividend % divisor;
+}
+
+// tuple tie组合解包
+std::tuple<int, int> divide_tuple(int dividend, int divisor) {
+    return std::make_tuple(dividend / divisor, dividend % divisor);
+}
+
+// 结构化绑定
+struct DivideResult {
+    int quotient;
+    int remainder;
+};
+DivideResult divide_struct(int dividend, int divisor) {
+    return {dividend / divisor, dividend % divisor};
+}
+
+void divide_callback(int dividend, int divisor, std::function<void(int, int)> callback) {
+    callback(dividend / divisor, dividend % divisor);
+}
+// 自定义out结构体包装，将输出参数作为结构体的成员，用于任意类型
+template <class T>
+struct out {
+    std::function<void(T)> target;
+
+    out(T* t)
+        : target([t](T&& in) {
+            if (t) *t = std::move(in);
+        }) {}
+    template <class... Args>
+    void emplace(Args&&... args) {
+        target(T(std::forward<Args>(args)...));
+    }
+    template <class X>
+    void operator=(X&& x) {
+        emplace(std::forward<X>(x));
+    }
+    template <class... Args>
+    void operator()(Args&&... args) {
+        emplace(std::forward<Args>(args)...);
+    }
+};
+void divide_out(int dividend, int divisor, out<int>& quotient_out, out<int>& remainder_out) {
+    quotient_out.emplace(dividend / divisor);
+    remainder_out.emplace(dividend % divisor);
+}
+// 模板推导
+template <typename T1, typename T2>
+struct many {
+    T1 quotient;
+    T2 remainder;
+};
+
+template <class T1, class T2>
+many(T1, T2) -> many<T1, T2>;
+
+many<int, int> divide_template(int dividend, int divisor) {
+    return many{
+        dividend / divisor,
+        dividend % divisor,
+    };
+}
+
+TEST(APIDesignTest, MultivaluedReturn) {
+    int dividend = 10;
+    int divisor = 3;
+    int quotient, remainder;
+    divide_reference(dividend, divisor, quotient, remainder);
+    ASSERT_EQ(quotient, 3);
+    ASSERT_EQ(remainder, 1);
+
+    quotient = 0; remainder = 0;
+    divide_point(dividend, divisor, &quotient, &remainder);
+    ASSERT_EQ(quotient, 3);
+    ASSERT_EQ(remainder, 1);
+
+    quotient = 0; remainder = 0;
+    std::tie(quotient, remainder) = divide_tuple(dividend, divisor);
+    ASSERT_EQ(quotient, 3);
+    ASSERT_EQ(remainder, 1);
+
+    auto result = divide_struct(dividend, divisor);
+    ASSERT_EQ(result.quotient, 3);
+    ASSERT_EQ(result.remainder, 1);
+
+    quotient = 0; remainder = 0;
+    auto callback = [&quotient, &remainder](int q, int r) {
+        quotient = q;
+        remainder = r;
+    };
+    divide_callback(dividend, divisor, callback);
+    ASSERT_EQ(quotient, 3);
+    ASSERT_EQ(remainder, 1);
+
+    quotient = 0; remainder = 0;
+    out<int> quotient_out(&quotient);
+    out<int> remainder_out(&remainder);
+    divide_out(dividend, divisor, quotient_out, remainder_out);
+    ASSERT_EQ(quotient, 3);
+    ASSERT_EQ(remainder, 1);
+
+    auto [x, y] = divide_template(dividend, divisor);
+    ASSERT_EQ(x, 3);
+    ASSERT_EQ(y, 1);
+}
 // 强类型转换
 struct FileHandle_ {
     int _handle;
