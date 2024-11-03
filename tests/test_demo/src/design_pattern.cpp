@@ -585,7 +585,7 @@ public:
     static std::shared_ptr<Singlehungry> GetInstance() {
         if (singleton == nullptr) {
             singleton = std::shared_ptr<Singlehungry>(new Singlehungry);
-            // 不能std：：make_shared，因为构造函数是私有的
+            // 不能std::make_shared，因为构造函数是私有的
         }
         return singleton;
     }
