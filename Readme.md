@@ -21,7 +21,6 @@ g++ --version
 sudo update-alternatives --config gcc
 sudo update-alternatives --config g++
 # 选择想用的版本即可
-
 ```
 # 学习参考
 [小彭老师-现代C++项目实战](https://space.bilibili.com/263032155/channel/collectiondetail?sid=599074)
