@@ -104,7 +104,7 @@ struct Resource_IMPL::Impl {
 
     Impl() {
         puts("open file");
-        p = fopen("CMakeCache.txt", "r");
+        p = fopen("Makefile", "r");
     }
 
     Impl(Impl &&) = delete;
