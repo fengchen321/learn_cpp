@@ -26,3 +26,4 @@ create_executable(hexdump_tool SOURCE_FILES src/hexdump_tool.cpp LINK_LIBS ${COM
 create_executable(api_design SOURCE_FILES src/api_design.cpp LINK_LIBS ${COMMON_GTEST_LIBS}) #CXX_STANDARD 20)
 create_executable(design_pattern SOURCE_FILES src/design_pattern.cpp LINK_LIBS ${COMMON_GTEST_LIBS}) #CXX_STANDARD 20)
 create_executable(test_thread SOURCE_FILES src/test_thread.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
+create_executable(test_move SOURCE_FILES src/test_move.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
