@@ -3,6 +3,7 @@ project(test_demo)
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../demo/include
     )
+# add_compile_options() 添加编译选项，可直接man gcc查看相关选项
 # Create executables with optional library linking
 create_executable(code_performance SOURCE_FILES src/code_performance.cpp)
 create_executable(macro_usage SOURCE_FILES src/test_macro_usage.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)

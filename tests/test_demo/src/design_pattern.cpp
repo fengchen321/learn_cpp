@@ -1,4 +1,3 @@
-#include <gtest/gtest.h>
 #include <vector>
 #include <numeric>
 #include <optional>
@@ -8,6 +7,7 @@
 #include <thread>
 #include <future>
 #include <typeindex>
+#include "gtest_prompt.h"
 
 int sum_0(std::vector<int> v) {
     int res = 0;
@@ -1092,6 +1092,128 @@ TEST(DesignPatternTest, ObservePattern) {
     hm.healthchange = 5;
     player->send(&hm);
     ASSERT_EQ(player->getComponent<LivingBeing>()->health, 103);
+}
+
+/*
+* 类型擦除
+*/
+#include "type_erase_msglib.h"
+#include <vector>
+#include <memory>
+struct MsgBase {
+    virtual void speak() = 0;
+    virtual void load() = 0;
+    virtual std::shared_ptr<MsgBase> clone() const = 0;
+    virtual ~MsgBase() = default;
+    using Ptr = std::shared_ptr<MsgBase>;
+};
+namespace msg_extra_funcs {
+    void load(MoveMsg &msg) {
+        std::cin >> msg.x >> msg.y;
+    }
+
+    void load(JumpMsg &msg) {
+        std::cin >> msg.height;
+    }
+
+    void load(SleepMsg &msg) {
+        std::cin >> msg.time;
+    }
+
+    void load(ExitMsg &) {
+    }
+}
+template <class Msg>
+struct MsgImpl : MsgBase {
+    Msg msg;
+    template <class ...Ts>
+    MsgImpl(Ts &&... ts) : msg{std::forward<Ts>(ts)...} {}
+
+    void speak() override {
+        msg.speak();
+    }
+
+    void load() override {
+        msg_extra_funcs::load(msg);
+    }
+    std::shared_ptr<MsgBase> clone() const override {
+        return std::make_shared<MsgImpl<Msg>>(msg);
+    }
+};
+
+struct MsgFactoryBase {
+    virtual MsgBase::Ptr create() = 0;
+    virtual ~MsgFactoryBase() = default;
+    using Ptr = std::shared_ptr<MsgFactoryBase>;
+};
+
+template <class Msg>
+struct MsgFactoryImpl : MsgFactoryBase {
+    MsgBase::Ptr create() override {
+        return std::make_shared<MsgImpl<Msg>>();
+    }
+};
+
+template <class Msg>
+MsgFactoryBase::Ptr makeFactory() {
+    return std::make_shared<MsgFactoryImpl<Msg>>();
+}
+
+template <class Msg, class ...Ts>
+std::shared_ptr<MsgBase> makeMsg(Ts && ...ts) {
+    return std::make_shared<MsgImpl<Msg>>(std::forward<Ts>(ts)...);
+}
+
+TEST(DesignPatternTest, TypeErase) {
+    std::vector<std::shared_ptr<MsgBase>> msgs;
+    msgs.push_back(makeMsg<MoveMsg>(5, 10));
+    msgs.push_back(makeMsg<JumpMsg>(20));
+    msgs.push_back(makeMsg<SleepMsg>(8));
+    msgs.push_back(makeMsg<ExitMsg>());
+
+    for (auto &msg : msgs) {
+        msg->speak();
+    }
+}
+
+struct RobotClass {
+    inline static const std::map<std::string, MsgFactoryBase::Ptr> factories = {
+#define PER_MSG(Type) {#Type, makeFactory<Type##Msg>()},
+    PER_MSG(Move)
+    PER_MSG(Jump)
+    PER_MSG(Sleep)
+    PER_MSG(Exit)
+#undef PER_MSG
+    };
+
+    void recv_data() {
+        std::string type;
+        std::cin >> type;
+
+        try {
+            msg = factories.at(type)->create();
+        } catch (std::out_of_range &) {
+            std::cout << "no such msg type!\n";
+            return;
+        }
+
+        msg->load();
+    }
+
+    void update() {
+        if (msg)
+            msg->speak();
+    }
+
+    MsgBase::Ptr msg;
+};
+
+TEST(DesignPatternTest, TypeErase1) {
+    std::istringstream input("Move\n5 10\n");
+    std::cin.rdbuf(input.rdbuf());
+    RobotClass robot;
+    robot.recv_data();
+    ASSERT_LOGS_STDOUT(robot.update(), "Move 5, 10");
 }
 
 int main(int argc, char** argv) {
