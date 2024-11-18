@@ -294,11 +294,34 @@ TEST(UNDefTEST, at) {
 }
 
 // 容器迭代器失效
-TEST(UNDefTEST, iter) {
+TEST(UNDefTEST, vector_iter) {
     std::vector<int> v = { 1, 2, 3 };
     auto it = v.begin();
     v.push_back(4); // push_back 可能导致扩容，会使之前保存的 v.begin() 迭代器失效
     // *it = 0;        // 未定义行为
+}
+
+TEST(UNDefTEST, map_iter) {
+    std::map<int, std::unique_ptr<int>> map_info;
+    map_info[1] = std::make_unique<int>(10);
+    map_info[2] = nullptr;
+    map_info[3] = std::make_unique<int>(30);
+
+    // 未定义行为：删除元素导致迭代器失效
+    for (auto itor = map_info.begin(); itor != map_info.end(); itor++) {
+        if (itor->second == nullptr) {
+            map_info.erase(itor->first);
+        }
+    }
+
+    // 正确的方式：使用 erase 的返回值来获取下一个有效的迭代器
+    for (auto itor = map_info.begin(); itor != map_info.end(); ) {
+        if (itor->second == nullptr) {
+            itor = map_info.erase(itor);
+        } else {
+            ++itor;
+        }
+    }
 }
 
 // 容器元素引用失效
