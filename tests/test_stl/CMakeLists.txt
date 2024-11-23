@@ -9,4 +9,5 @@ create_executable(test_memory_resource SOURCE_FILES src/test_memory_resource.cpp
 create_executable(test_array SOURCE_FILES src/test_array.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_vector SOURCE_FILES src/test_vector.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_list SOURCE_FILES src/test_list.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
+create_executable(test_optional SOURCE_FILES src/test_optional.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 
