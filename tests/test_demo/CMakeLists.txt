@@ -28,3 +28,4 @@ create_executable(design_pattern SOURCE_FILES src/design_pattern.cpp LINK_LIBS $
 create_executable(test_thread SOURCE_FILES src/test_thread.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
 create_executable(test_move SOURCE_FILES src/test_move.cpp LINK_LIBS ${COMMON_GTEST_LIBS})
 create_executable(test_undef SOURCE_FILES src/test_undef.cpp LINK_LIBS ${COMMON_GTEST_LIBS} CXX_STANDARD 20)
+create_executable(test_ostream SOURCE_FILES src/test_ostream.cpp LINK_LIBS ${COMMON_GTEST_LIBS} demo_lib)
