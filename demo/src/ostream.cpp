@@ -1,8 +1,5 @@
 #include "ostream.h"
 
-BufferedInStreamOwned io_in(std::make_unique<UnixFileInStream>(STDIN_FILENO));
-LineBufferedOutStreamOwned io_out(std::make_unique<UnixFileOutStream>(STDOUT_FILENO));
-UnixFileOutStream io_err(STDERR_FILENO);
 void io_perror(const char *msg) {
     io_err.puts(msg);
     io_err.puts(": ");
@@ -72,7 +69,8 @@ std::string InStream::readuntil(const char *__restrict eol, size_t neol) {
 }
 
 void InStream::readline(const char *__restrict eol, size_t neol) {
-    
+    std::string s = getline(eol, neol);
+    fprintf(stderr, "readline: %s\n", s.c_str());
 }
 
 std::string InStream::getline(char eol) {
@@ -87,7 +85,7 @@ std::string InStream::getline(const char *__restrict eol, size_t neol) {
     std::string s = readuntil(eol, neol);
     if (s.size() >= neol 
             && memcmp(s.data() + s.size() - neol, eol, neol) == 0) {
-            s.resize(s.size() - neol);
+        s.resize(s.size() - neol);
     }
     return s;
 }
@@ -222,12 +220,11 @@ void LineBufferedOutStream::write(const char *__restrict s, size_t len) {
 
 std::unique_ptr<OutStream> out_file_open(const char *path, OpenFlag flag) {
     int oflag = openFlagToUnixFlag.at(flag);
-    int fd = ::open(path, oflag);
+    int fd = ::open(path, oflag, 0666);
     if (fd < 0) {
         throw std::system_error(errno, std::generic_category());
     }
     auto file = std::make_unique<UnixFileOutStream>(fd);
-    // return std::make_unique<BufferedOutStream>(std::move(file));
     return file;
 }
 
@@ -238,6 +235,5 @@ std::unique_ptr<InStream> in_file_open(const char *path, OpenFlag flag) {
         throw std::system_error(errno, std::generic_category());
     }
     auto file = std::make_unique<UnixFileInStream>(fd);
-    // return std::make_unique<BufferedInStream>(std::move(file));
     return file;
 }

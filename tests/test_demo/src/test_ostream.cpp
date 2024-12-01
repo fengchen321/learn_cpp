@@ -24,6 +24,37 @@ private:
     std::string filePath;
 };
 
+class OutContent {
+public:
+    explicit OutContent(const std::string& path) : filePath(path), content("") {}
+
+    ~OutContent() {
+         try {
+            if (std::filesystem::exists(filePath)) {
+                std::filesystem::remove(filePath);
+            }
+        } catch (const std::filesystem::filesystem_error& e) {
+            
+        }
+    }
+    const std::string& getFilePath() const {
+        return filePath;
+    }
+
+    const std::string& getContent() const {
+        std::ifstream tempFile(filePath, std::ios::in | std::ios::binary);
+        if (!tempFile) {
+            throw std::runtime_error("Unable to open file for reading: " + filePath);
+        }
+        content = std::string((std::istreambuf_iterator<char>(tempFile)), std::istreambuf_iterator<char>());
+        return content;
+    }
+
+private:
+    std::string filePath;
+    mutable std::string content;
+};
+
 TEST(UnixFileInStreamTest, Read) {
     TempFile tempFile("Hello, World!");
     int fd = open(tempFile.getFilePath().c_str(), O_RDONLY);
@@ -144,17 +175,14 @@ TEST(InStreamTest, ReadUntilString) {
     EXPECT_EQ(data, "Hello, Wo");
 }
 
-// TEST(InStreamTest, ReadLine) {
-//     TempFile tempFile("Hello, World!\nNext line");
-//     int fd = open(tempFile.getFilePath().c_str(), O_RDONLY);
-//     ASSERT_GE(fd, 0) << "Failed to open file: " << strerror(errno);
+TEST(InStreamTest, ReadLine) {
+    TempFile tempFile("Hello, World!\nNext line");
+    int fd = open(tempFile.getFilePath().c_str(), O_RDONLY);
+    ASSERT_GE(fd, 0) << "Failed to open file: " << strerror(errno);
 
-//     UnixFileInStream inStream(fd);
-
-//     std::string line;
-//     inStream.readline("\n", 1);
-//     EXPECT_EQ(line, "Hello, World!");
-// }
+    UnixFileInStream inStream(fd);
+    inStream.readline("\n", 1);
+}
 
 TEST(InStreamTest, GetLine) {
     TempFile tempFile("Hello, World!");
@@ -187,17 +215,36 @@ TEST(InStreamTest, GetLineString) {
 }
 
 TEST(UnixFileOutStreamTest, Write) {
-    const char* tempFilePath = "/tmp/test_file.txt";
-    auto p = out_file_open(tempFilePath, OpenFlag::Write);
+    OutContent outContent("/tmp/test_file.txt");
+    auto p = out_file_open(outContent.getFilePath().c_str(), OpenFlag::Write);
+    UnixFileOutStream* outStream = dynamic_cast<UnixFileOutStream*>(p.get());
+    outStream->write("Hello, World!\n", 13);
 
-    p->write("Hello, World!\n", 13);
-    system("cat /tmp/test_file.txt");
+    EXPECT_EQ(outContent.getContent(), "Hello, World!");
+}
 
-    // std::ifstream tempFile(tempFilePath);
-    // std::string content((std::istreambuf_iterator<char>(tempFile)), std::istreambuf_iterator<char>());
-    // EXPECT_EQ(content, "Hello, World!");
+TEST(BufferedOutStream, Write) {
+    OutContent outContent("/tmp/test_file.txt");
+    auto p = out_file_open(outContent.getFilePath().c_str(), OpenFlag::Write);
+    BufferedOutStream buffer_out = BufferedOutStream(*p);
+    buffer_out.write("Hello, World!\naaaa\n", 18);
+    buffer_out.flush();
+    EXPECT_EQ(outContent.getContent(), "Hello, World!\naaaa");
+    buffer_out.putchar('c');
+    buffer_out.flush();
+    EXPECT_EQ(outContent.getContent(), "Hello, World!\naaaac");
+}
 
-    std::filesystem::remove(tempFilePath);
+TEST(LineBufferedOutStream, Write) {
+    OutContent outContent("/tmp/test_file.txt");
+    auto p = out_file_open(outContent.getFilePath().c_str(), OpenFlag::Write);
+    LineBufferedOutStream buffer_out = LineBufferedOutStream(*p);
+    buffer_out.write("Hello, World!\naaaa\n", 18);
+    EXPECT_EQ(outContent.getContent(), "Hello, World!\n");
+    buffer_out.putchar('c');
+    EXPECT_EQ(outContent.getContent(), "Hello, World!\n");
+    buffer_out.putchar('\n');
+    EXPECT_EQ(outContent.getContent(), "Hello, World!\naaaac\n");
 }
 
 TEST(OStreamTest, OutFileOpenNormal) {
@@ -234,6 +281,60 @@ TEST(OStreamTest, IFileOpenException) {
     ASSERT_THROW(in_file_open("/tmp/aaaaaaa", OpenFlag::Read), std::system_error);
 }
 
+TEST(OStreamTest, IO_IN) {
+    TempFile tempFile("Hello, World!");
+    int fd = open(tempFile.getFilePath().c_str(), O_RDONLY);
+    ASSERT_GE(fd, 0) << "Failed to open file: " << strerror(errno);
+
+    int saved_stdin = dup(STDIN_FILENO);
+    dup2(fd, STDIN_FILENO);
+
+    char c = io_in.getchar();
+    printf("%d\n", c);
+
+    dup2(saved_stdin, STDIN_FILENO);
+    close(fd);
+}
+
+TEST(OStreamTest, IO_OUT) {
+    OutContent outContent("/tmp/test_file.txt");
+    int fd = open(outContent.getFilePath().c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    ASSERT_GE(fd, 0) << "Failed to open file: " << strerror(errno);
+
+    int saved_stdout = dup(STDOUT_FILENO);
+    dup2(fd, STDOUT_FILENO);
+
+    std::string test_data = "Hello, World!\n";
+    io_out.puts(test_data.c_str());
+
+    dup2(saved_stdout, STDOUT_FILENO);
+    close(fd);
+
+    EXPECT_EQ(outContent.getContent(), test_data);
+}
+
+TEST(OStreamTest, IO_ERR) {
+    OutContent outContent("/tmp/test_file.txt");
+    int fd = open(outContent.getFilePath().c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    ASSERT_GE(fd, 0) << "Failed to open file: " << strerror(errno);
+
+    int saved_stderr  = dup(STDERR_FILENO);
+    dup2(fd, STDERR_FILENO);
+
+    std::string test_data = "Error: Something went wrong!\n";
+    io_err.puts(test_data.c_str());
+
+    dup2(saved_stderr , STDERR_FILENO);
+    close(fd);
+
+    EXPECT_EQ(outContent.getContent(), test_data);
+   
+}
+
+TEST(OStreamTest, IO_perror) {
+   io_perror("msg");
+   perror("msg");
+}
 
 int main(int argc, char** argv) {
     ::testing::InitGoogleTest(&argc, argv);

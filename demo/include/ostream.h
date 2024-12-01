@@ -248,3 +248,9 @@ struct LineBufferedOutStreamOwned : LineBufferedOutStream {
 
 std::unique_ptr<OutStream> out_file_open(const char *path, OpenFlag flag);
 std::unique_ptr<InStream> in_file_open(const char *path, OpenFlag flag);
+
+static BufferedInStreamOwned io_in(std::make_unique<UnixFileInStream>(STDIN_FILENO));
+static LineBufferedOutStreamOwned io_out(std::make_unique<UnixFileOutStream>(STDOUT_FILENO));
+static UnixFileOutStream io_err(STDERR_FILENO);
+
+void io_perror(const char *msg);
