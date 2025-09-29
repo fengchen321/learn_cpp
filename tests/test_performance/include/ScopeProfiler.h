@@ -47,7 +47,7 @@ ScopeProfiler::ScopeProfiler(const char *tag_, ScopeProfiler::ClockType::time_po
 
 void ScopeProfiler::onDestroy(ScopeProfiler::ClockType::time_point end) {
     auto diff = end - beg;
-    int us = std::chrono::duration_cast<std::chrono::microseconds>(diff).count();
+    int us = std::chrono::duration_cast<std::chrono::nanoseconds>(diff).count();
     records.push_back({tag, us});
 }
 

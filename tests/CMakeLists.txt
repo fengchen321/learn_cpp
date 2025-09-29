@@ -50,3 +50,4 @@ include_directories(
     
 add_subdirectory(test_demo)
 add_subdirectory(test_stl)
+add_subdirectory(test_performance)

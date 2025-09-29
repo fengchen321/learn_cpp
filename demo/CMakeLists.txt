@@ -1,5 +1,3 @@
-project(demo)
-
 include_directories(
     include)
 
