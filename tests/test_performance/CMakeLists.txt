@@ -67,4 +67,11 @@ performance_test(backtrace_benchmark
     COMPILE_OPTIONS -O2
 )
 
+performance_test(clock_perf_benchmark 
+    SOURCE_FILES src/clock_perf_benchmark.cpp
+    LINK_LIBS rt
+    COMPILE_OPTIONS -O3 -ggdb)
+
+performance_test(clock_info_query 
+    SOURCE_FILES src/clock_info_query.cpp)
 # ./tests/test_performance/kernel_map_benchmark
