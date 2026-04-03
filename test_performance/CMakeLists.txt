@@ -29,7 +29,7 @@ function(performance_test name)
         )
     endif()
 
-    target_link_libraries(${name} PRIVATE 
+    target_link_libraries(${name} PRIVATE
         benchmark::benchmark
         ${PARSED_LINK_LIBS}
     )
@@ -41,37 +41,28 @@ function(performance_test name)
     add_test(NAME ${name} COMMAND ${name})
 endfunction()
 
-performance_test(vector_traverse_performance 
+performance_test(vector_traverse_performance
     SOURCE_FILES src/vector_traverse_performance.cpp)
 
-performance_test(CRTP_performance 
+performance_test(CRTP_performance
     SOURCE_FILES src/CRTP_performance.cpp
     COMPILE_OPTIONS -O3)
 
-performance_test(string_benchmark 
+performance_test(string_benchmark
     SOURCE_FILES src/string_benchmark.cpp
     COMPILE_OPTIONS -O3)
 
-performance_test(kernel_map_benchmark 
-    SOURCE_FILES 
+performance_test(kernel_map_benchmark
+    SOURCE_FILES
         src/kernel_map_benchmark.cpp
         src/kernel_map_generate.cpp
     LINK_LIBS pthread
     CXX_STANDARD 20
 )
 
-performance_test(backtrace_benchmark 
+performance_test(backtrace_benchmark
     SOURCE_FILES src/backtrace_benchmark.cpp
     LINK_LIBS pthread dl
     CXX_STANDARD 23
     COMPILE_OPTIONS -O2
 )
-
-performance_test(clock_perf_benchmark 
-    SOURCE_FILES src/clock_perf_benchmark.cpp
-    LINK_LIBS rt
-    COMPILE_OPTIONS -O3 -ggdb)
-
-performance_test(clock_info_query 
-    SOURCE_FILES src/clock_info_query.cpp)
-# ./tests/test_performance/kernel_map_benchmark

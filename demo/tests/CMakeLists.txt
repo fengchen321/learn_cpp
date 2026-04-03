@@ -1,5 +1,5 @@
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../demo/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
     )
 # add_compile_options() 添加编译选项，可直接man gcc查看相关选项
 # Create executables with optional library linking

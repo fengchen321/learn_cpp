@@ -7,3 +7,5 @@ packages
 build
 cmake-build-*
 third_party
+*.perfbin
+*.sites.tsv

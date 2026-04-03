@@ -1,5 +1,6 @@
 include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../stl/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include
+    ${CMAKE_SOURCE_DIR}/include
     )
 create_executable(dummy_array_iterator 
     SOURCE_FILES src/test_dummy_array_iterator.cpp 

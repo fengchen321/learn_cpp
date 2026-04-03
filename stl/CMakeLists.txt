@@ -6,3 +6,5 @@ add_library(stl_lib
 )
 
 target_include_directories(stl_lib PUBLIC include)
+
+add_subdirectory(tests)
