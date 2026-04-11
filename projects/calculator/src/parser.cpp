@@ -152,7 +152,23 @@ std::unique_ptr<Node> Parser::factor() {
         case EToken::TOKEN_IDENTIFIER: {
             std::string symbol = scanner_.getSymbol();
             scanner_.accept();
-            return std::make_unique<VariableNode>(std::move(symbol), env_);
+            const FuncPtr func = env_.findFunc(symbol);
+            if (scanner_.getToken() == EToken::TOKEN_LPAREN) {
+                scanner_.accept();
+                std::unique_ptr<Node> node = expr();
+                if (scanner_.getToken() != EToken::TOKEN_RPAREN) {
+                    throw std::runtime_error("Expected ')'");
+                }
+                scanner_.accept();
+                if (!func) {
+                    throw std::runtime_error("Unknown function: " + symbol);
+                }
+                return builder_.makeFunction(std::move(node), func);
+            }
+            if (func) {
+                throw std::runtime_error("Expected '(' after function name");
+            }
+            return builder_.makeVariable(std::move(symbol), env_);
         }
         case EToken::TOKEN_MINUS:
             scanner_.accept();

@@ -1,9 +1,12 @@
 #pragma once
 
+#include "func_table.h"
+
 #include <cstdint>
 #include <memory>
-#include <utility>
 #include <stdexcept>
+#include <string>
+#include <utility>
 #include <vector>
 
 enum class EAdditiveOp : std::uint8_t {
@@ -112,8 +115,12 @@ public:
 
 class FunNode : public UnaryNode {
 public:
-    explicit FunNode(std::unique_ptr<Node> child): UnaryNode(std::move(child)) {}
+    explicit FunNode(std::unique_ptr<Node> child, FuncPtr pfunc)
+        : UnaryNode(std::move(child)), pfunc_(pfunc) {}
     double calc() const override;
+
+private:
+    FuncPtr pfunc_;
 };
 
 class NaryNode : public Node {

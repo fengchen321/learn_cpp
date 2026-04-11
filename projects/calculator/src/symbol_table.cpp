@@ -1,5 +1,4 @@
 #include "symbol_table.h"
-
 #include <algorithm>
 #include <stdexcept>
 

@@ -8,6 +8,7 @@ add_library(calculator_core SHARED
     src/symbol_table.cpp
     src/storage.cpp
     src/env.cpp
+    src/func_table.cpp
 )
 
 target_include_directories(calculator_core PUBLIC

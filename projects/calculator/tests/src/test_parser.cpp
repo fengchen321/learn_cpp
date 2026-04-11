@@ -3,6 +3,7 @@
 #include "env.h"
 #include "parser.h"
 #include "scanner.h"
+#include <cmath>
 #include <sstream>
 
 namespace {
@@ -19,6 +20,14 @@ double ParseAndEvaluate(const std::string& expression, IAstBuilder& builder) {
     std::istringstream input(expression);
     Scanner scanner(input);
     Parser parser(scanner, builder);
+    parser.parse();
+    return parser.calc();
+}
+
+double ParseAndEvaluate(const std::string& expression, IAstBuilder& builder, Env& env) {
+    std::istringstream input(expression);
+    Scanner scanner(input);
+    Parser parser(scanner, builder, env);
     parser.parse();
     return parser.calc();
 }
@@ -175,6 +184,71 @@ TEST(ParserAssignmentTest, UsingUnknownVariableInExpressionFails) {
     Env env;
 
     EXPECT_EQ(EvaluateError("x + 1", env), "Undefined variable");
+}
+
+TEST(ParserFunctionTest, SupportsBuiltinFunctionInsideExpression) {
+    Env env;
+
+    EXPECT_NEAR(ParseAndEvaluate("4 + log(e * e)", env), 6.0, 1e-12);
+}
+
+TEST(ParserFunctionTest, EvaluatesAllBuiltinFunctions) {
+    Env env;
+    constexpr double kTolerance = 1e-12;
+
+    struct FunctionCase {
+        const char* expression;
+        double expected;
+    };
+
+    const FunctionCase cases[] = {
+        {"log(e * e)", 2.0},
+        {"log10(1000)", 3.0},
+        {"exp(1)", std::exp(1.0)},
+        {"sqrt(81)", 9.0},
+        {"sin(pi / 6)", std::sin(std::acos(-1.0) / 6.0)},
+        {"cos(0)", 1.0},
+        {"tan(pi / 4)", std::tan(std::acos(-1.0) / 4.0)},
+        {"asin(0.5)", std::asin(0.5)},
+        {"acos(0.5)", std::acos(0.5)},
+        {"atan(1)", std::atan(1.0)},
+        {"sinh(0)", 0.0},
+        {"cosh(0)", 1.0},
+        {"tanh(0)", 0.0},
+    };
+
+    for (const auto& testCase : cases) {
+        SCOPED_TRACE(testCase.expression);
+        EXPECT_NEAR(ParseAndEvaluate(testCase.expression, env), testCase.expected, kTolerance);
+    }
+}
+
+TEST(ParserFunctionTest, WorksWithBinaryAndNaryBuilders) {
+    BinaryAstBuilder binaryBuilder;
+    NaryAstBuilder naryBuilder;
+    Env binaryEnv;
+    Env naryEnv;
+
+    EXPECT_NEAR(ParseAndEvaluate("4 + log(e * e)", binaryBuilder, binaryEnv), 6.0, 1e-12);
+    EXPECT_NEAR(ParseAndEvaluate("4 + log(e * e)", naryBuilder, naryEnv), 6.0, 1e-12);
+}
+
+TEST(ParserFunctionTest, RejectsUnknownFunctionCalls) {
+    Env env;
+
+    EXPECT_EQ(EvaluateError("unknown(1)", env), "Unknown function: unknown");
+}
+
+TEST(ParserFunctionTest, RejectsBuiltinFunctionWithoutParentheses) {
+    Env env;
+
+    EXPECT_EQ(EvaluateError("log e", env), "Expected '(' after function name");
+}
+
+TEST(ParserFunctionTest, RejectsFunctionCallWithMissingClosingParenthesis) {
+    Env env;
+
+    EXPECT_EQ(EvaluateError("log(e * e", env), "Expected ')'");
 }
 
 int main(int argc, char** argv) {

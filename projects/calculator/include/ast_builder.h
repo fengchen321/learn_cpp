@@ -16,6 +16,8 @@ public:
     virtual ~IAstBuilder() = default;
 
     virtual std::unique_ptr<Node> makeNumber(double value) const = 0;
+    virtual std::unique_ptr<Node> makeVariable(std::string symbol, Env& env) const = 0;
+    virtual std::unique_ptr<Node> makeFunction(std::unique_ptr<Node> child, FuncPtr func) const = 0;
     virtual std::unique_ptr<Node> makeNegate(std::unique_ptr<Node> child) const = 0;
     virtual std::unique_ptr<Node> makeAssign(std::unique_ptr<Node> left,
                                              std::unique_ptr<Node> right) const = 0;
@@ -30,6 +32,8 @@ public:
 class BinaryAstBuilder : public IAstBuilder {
 public:
     std::unique_ptr<Node> makeNumber(double value) const override;
+    std::unique_ptr<Node> makeVariable(std::string symbol, Env& env) const override;
+    std::unique_ptr<Node> makeFunction(std::unique_ptr<Node> child, FuncPtr func) const override;
     std::unique_ptr<Node> makeNegate(std::unique_ptr<Node> child) const override;
     std::unique_ptr<Node> makeAssign(std::unique_ptr<Node> left,
                                      std::unique_ptr<Node> right) const override;
@@ -44,6 +48,8 @@ public:
 class NaryAstBuilder : public IAstBuilder {
 public:
     std::unique_ptr<Node> makeNumber(double value) const override;
+    std::unique_ptr<Node> makeVariable(std::string symbol, Env& env) const override;
+    std::unique_ptr<Node> makeFunction(std::unique_ptr<Node> child, FuncPtr func) const override;
     std::unique_ptr<Node> makeNegate(std::unique_ptr<Node> child) const override;
     std::unique_ptr<Node> makeAssign(std::unique_ptr<Node> left,
                                      std::unique_ptr<Node> right) const override;

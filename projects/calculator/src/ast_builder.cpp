@@ -4,6 +4,14 @@ std::unique_ptr<Node> BinaryAstBuilder::makeNumber(double value) const {
     return std::make_unique<NumberNode>(value);
 }
 
+std::unique_ptr<Node> BinaryAstBuilder::makeVariable(std::string symbol, Env& env) const {
+    return std::make_unique<VariableNode>(std::move(symbol), env);
+}
+
+std::unique_ptr<Node> BinaryAstBuilder::makeFunction(std::unique_ptr<Node> child, FuncPtr func) const {
+    return std::make_unique<FunNode>(std::move(child), func);
+}
+
 std::unique_ptr<Node> BinaryAstBuilder::makeNegate(std::unique_ptr<Node> child) const {
     return std::make_unique<NegateNode>(std::move(child));
 }
@@ -44,6 +52,14 @@ std::unique_ptr<Node> BinaryAstBuilder::makeMultiplicative(
 
 std::unique_ptr<Node> NaryAstBuilder::makeNumber(double value) const {
     return std::make_unique<NumberNode>(value);
+}
+
+std::unique_ptr<Node> NaryAstBuilder::makeVariable(std::string symbol, Env& env) const {
+    return std::make_unique<VariableNode>(std::move(symbol), env);
+}
+
+std::unique_ptr<Node> NaryAstBuilder::makeFunction(std::unique_ptr<Node> child, FuncPtr func) const {
+    return std::make_unique<FunNode>(std::move(child), func);
 }
 
 std::unique_ptr<Node> NaryAstBuilder::makeNegate(std::unique_ptr<Node> child) const {

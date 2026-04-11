@@ -57,7 +57,7 @@ double NegateNode::calc() const {
 }
 
 double FunNode::calc() const {
-    return 0;
+    return (*pfunc_)(child_->calc());
 }
 
 NaryNode::NaryNode(std::unique_ptr<Node> child) {
