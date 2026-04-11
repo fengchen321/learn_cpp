@@ -41,16 +41,27 @@ double FunNode::calc() const {
     return 0;
 }
 
-void MultipleNode::addChild(std::unique_ptr<Node> node, bool isPositive) {
-    childs_.push_back(std::move(node));
-    positives_.push_back(isPositive);
+NaryNode::NaryNode(std::unique_ptr<Node> child) {
+    appendChild(std::move(child));
+}
+
+void NaryNode::appendChild(std::unique_ptr<Node> child) {
+    children_.push_back(std::move(child));
+}
+
+SumNode::SumNode(std::unique_ptr<Node> child)
+    : NaryNode(std::move(child)), additionFlags_{true} {}
+
+void SumNode::addTerm(std::unique_ptr<Node> term, bool isAddition) {
+    appendChild(std::move(term));
+    additionFlags_.push_back(isAddition);
 }
 
 double SumNode::calc() const {
     double result = 0;
-    for (size_t i = 0; i < childs_.size(); ++i) {
-        double value = childs_[i]->calc();
-        if (positives_[i]) {
+    for (size_t i = 0; i < children_.size(); ++i) {
+        double value = children_[i]->calc();
+        if (additionFlags_[i]) {
             result += value;
         } else {
             result -= value;
@@ -59,11 +70,19 @@ double SumNode::calc() const {
     return result;
 }
 
+ProductNode::ProductNode(std::unique_ptr<Node> child)
+    : NaryNode(std::move(child)), multiplicationFlags_{true} {}
+
+void ProductNode::addFactor(std::unique_ptr<Node> factor, bool isMultiplication) {
+    appendChild(std::move(factor));
+    multiplicationFlags_.push_back(isMultiplication);
+}
+
 double ProductNode::calc() const {
     double result = 1;
-    for (size_t i = 0; i < childs_.size(); ++i) {
-        double value = childs_[i]->calc();
-        if (positives_[i]) {
+    for (size_t i = 0; i < children_.size(); ++i) {
+        double value = children_[i]->calc();
+        if (multiplicationFlags_[i]) {
             result *= value;
         } else {
             if (value == 0) {

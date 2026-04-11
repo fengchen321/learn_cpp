@@ -103,24 +103,28 @@ public:
     double calc() const override;
 };
 
-class MultipleNode : public Node {
+class NaryNode : public Node {
 public:
-    MultipleNode(std::unique_ptr<Node> node) {
-        addChild(std::move(node), true);
-    }
-    void addChild(std::unique_ptr<Node> node, bool isPositive);
+    explicit NaryNode(std::unique_ptr<Node> child);
 protected:
-    std::vector<std::unique_ptr<Node>> childs_;     
-    std::vector<bool> positives_; // true for addition, false for subtraction
-};
-class SumNode : public MultipleNode {
-public:
-    SumNode(std::unique_ptr<Node> node): MultipleNode(std::move(node)) {}
-    double calc() const override;
+    void appendChild(std::unique_ptr<Node> child);
+    std::vector<std::unique_ptr<Node>> children_;
 };
 
-class ProductNode : public MultipleNode {
+class SumNode : public NaryNode {
 public:
-    ProductNode(std::unique_ptr<Node> node): MultipleNode(std::move(node)) {}
+    explicit SumNode(std::unique_ptr<Node> child);
+    void addTerm(std::unique_ptr<Node> term, bool isAddition);
     double calc() const override;
+private:
+    std::vector<bool> additionFlags_;
+};
+
+class ProductNode : public NaryNode {
+public:
+    explicit ProductNode(std::unique_ptr<Node> child);
+    void addFactor(std::unique_ptr<Node> factor, bool isMultiplication);
+    double calc() const override;
+private:
+    std::vector<bool> multiplicationFlags_;
 };

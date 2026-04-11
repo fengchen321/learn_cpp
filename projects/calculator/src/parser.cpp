@@ -1,8 +1,10 @@
+#include "ast_builder.h"
 #include "node.h"
 #include "scanner.h"
 #include "parser.h"
 
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -13,7 +15,16 @@ std::runtime_error UnexpectedToken() {
 } // namespace
 
 Parser::Parser(Scanner& scanner)
-    : scanner_(scanner),
+    : ownedBuilder_(std::make_unique<BinaryAstBuilder>()),
+      builder_(*ownedBuilder_),
+      scanner_(scanner),
+      tree_(nullptr),
+      status_(EStatus::STATUS_SUCCESS) {}
+
+Parser::Parser(Scanner& scanner, IAstBuilder& builder)
+    : ownedBuilder_(nullptr),
+      builder_(builder),
+      scanner_(scanner),
       tree_(nullptr),
       status_(EStatus::STATUS_SUCCESS) {}
 
@@ -52,25 +63,22 @@ expr is
 */
 std::unique_ptr<Node> Parser::expr() {
     std::unique_ptr<Node> node = term();
-    // why not use switch-case or if-else? 
+    std::vector<AdditivePart> rest;
     while (scanner_.getToken() == EToken::TOKEN_PLUS ||
            scanner_.getToken() == EToken::TOKEN_MINUS) {
-        const EToken token = scanner_.getToken();
+        const EAdditiveOp op =
+            scanner_.getToken() == EToken::TOKEN_PLUS ? EAdditiveOp::Add : EAdditiveOp::Subtract;
         scanner_.accept();
-        std::unique_ptr<Node> right = term();
-        if (token == EToken::TOKEN_PLUS) {
-            node = std::make_unique<AddNode>(std::move(node), std::move(right));
-        } else {
-            node = std::make_unique<SubtractNode>(std::move(node), std::move(right));
-        }
+        rest.push_back({op, term()});
     }
+    node = builder_.makeAdditive(std::move(node), std::move(rest));
     if (scanner_.getToken() == EToken::TOKEN_ASSIGN) {
         scanner_.accept();
         std::unique_ptr<Node> right = expr();
         if (!node->isLvalue()) {
             throw std::runtime_error("Cannot assign to an lvalue");
         }
-        node = std::make_unique<AssignNode>(std::move(node), std::move(right));
+        node = builder_.makeAssign(std::move(node), std::move(right));
     }
     return node;
 }
@@ -83,19 +91,18 @@ term is
 */
 std::unique_ptr<Node> Parser::term() {
     std::unique_ptr<Node> node = factor();
+    std::vector<MultiplicativePart> rest;
     while (scanner_.getToken() == EToken::TOKEN_MULTIPLY ||
            scanner_.getToken() == EToken::TOKEN_DIVIDE) {
-        const EToken token = scanner_.getToken();
+        const EMultiplicativeOp op =
+            scanner_.getToken() == EToken::TOKEN_MULTIPLY ? EMultiplicativeOp::Multiply
+                                                          : EMultiplicativeOp::Divide;
         scanner_.accept();
-        std::unique_ptr<Node> right = factor();
-        if (token == EToken::TOKEN_MULTIPLY) {
-            node = std::make_unique<MultiplyNode>(std::move(node), std::move(right));
-        } else {
-            node = std::make_unique<DivideNode>(std::move(node), std::move(right));
-        }
+        rest.push_back({op, factor()});
     }
-    return node;
+    return builder_.makeMultiplicative(std::move(node), std::move(rest));
 }
+
 /*
 factor is 
     NUMBER
@@ -109,7 +116,7 @@ std::unique_ptr<Node> Parser::factor() {
         case EToken::TOKEN_NUMBER: {
             const double value = scanner_.getValue();
             scanner_.accept();
-            return std::make_unique<NumberNode>(value);
+            return builder_.makeNumber(value);
         }
         case EToken::TOKEN_LPAREN: {
             scanner_.accept();
@@ -122,7 +129,7 @@ std::unique_ptr<Node> Parser::factor() {
         }
         case EToken::TOKEN_MINUS:
             scanner_.accept();
-            return std::make_unique<NegateNode>(factor());
+            return builder_.makeNegate(factor());
         default:
             throw UnexpectedToken();
     }

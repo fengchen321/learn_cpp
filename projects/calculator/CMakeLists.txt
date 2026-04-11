@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 add_library(calculator_core SHARED
+    src/ast_builder.cpp
     src/node.cpp
     src/scanner.cpp
     src/parser.cpp
