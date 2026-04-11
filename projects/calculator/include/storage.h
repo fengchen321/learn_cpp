@@ -2,6 +2,7 @@
 /*
 store variable values and Constants.
 */
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -25,5 +26,5 @@ public:
 private:
     void addValue(unsigned int id, double value);
     std::vector<double> cells_;
-    std::vector<bool> inits_;
+    std::vector<std::uint8_t> inits_;
 };

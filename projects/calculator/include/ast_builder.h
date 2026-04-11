@@ -1,29 +1,15 @@
 #pragma once
 
-#include <memory>
-#include <vector>
+#include "node.h"
 
-class Node;
-
-enum class EAdditiveOp {
-    Add,
-    Subtract,
-};
-
-struct AdditivePart {
-    EAdditiveOp op;
+template <typename Op>
+struct OperationPart {
+    Op op;
     std::unique_ptr<Node> node;
 };
 
-enum class EMultiplicativeOp {
-    Multiply,
-    Divide,
-};
-
-struct MultiplicativePart {
-    EMultiplicativeOp op;
-    std::unique_ptr<Node> node;
-};
+using AdditivePart = OperationPart<EAdditiveOp>;
+using MultiplicativePart = OperationPart<EMultiplicativeOp>;
 
 class IAstBuilder {
 public:

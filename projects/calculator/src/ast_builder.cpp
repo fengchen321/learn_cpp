@@ -1,7 +1,5 @@
 #include "ast_builder.h"
 
-#include "node.h"
-
 std::unique_ptr<Node> BinaryAstBuilder::makeNumber(double value) const {
     return std::make_unique<NumberNode>(value);
 }
@@ -67,7 +65,7 @@ std::unique_ptr<Node> NaryAstBuilder::makeAdditive(
 
     auto node = std::make_unique<SumNode>(std::move(first));
     for (auto& part : rest) {
-        node->addTerm(std::move(part.node), part.op == EAdditiveOp::Add);
+        node->addTerm(std::move(part.node), part.op);
     }
     return node;
 }
@@ -81,7 +79,7 @@ std::unique_ptr<Node> NaryAstBuilder::makeMultiplicative(
 
     auto node = std::make_unique<ProductNode>(std::move(first));
     for (auto& part : rest) {
-        node->addFactor(std::move(part.node), part.op == EMultiplicativeOp::Multiply);
+        node->addFactor(std::move(part.node), part.op);
     }
     return node;
 }

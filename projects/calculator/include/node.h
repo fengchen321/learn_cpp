@@ -1,9 +1,21 @@
 #pragma once
 
-#include <vector>
+#include <cstdint>
 #include <memory>
 #include <utility>
 #include <stdexcept>
+#include <vector>
+
+enum class EAdditiveOp : std::uint8_t {
+    Add,
+    Subtract,
+};
+
+enum class EMultiplicativeOp : std::uint8_t {
+    Multiply,
+    Divide,
+};
+
 class Node {
 public:
     Node() = default;
@@ -115,17 +127,17 @@ protected:
 class SumNode : public NaryNode {
 public:
     explicit SumNode(std::unique_ptr<Node> child);
-    void addTerm(std::unique_ptr<Node> term, bool isAddition);
+    void addTerm(std::unique_ptr<Node> term, EAdditiveOp op);
     double calc() const override;
 private:
-    std::vector<bool> additionFlags_;
+    std::vector<EAdditiveOp> operations_;
 };
 
 class ProductNode : public NaryNode {
 public:
     explicit ProductNode(std::unique_ptr<Node> child);
-    void addFactor(std::unique_ptr<Node> factor, bool isMultiplication);
+    void addFactor(std::unique_ptr<Node> factor, EMultiplicativeOp op);
     double calc() const override;
 private:
-    std::vector<bool> multiplicationFlags_;
+    std::vector<EMultiplicativeOp> operations_;
 };
