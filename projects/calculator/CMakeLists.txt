@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 3.13.4)
 
 add_library(calculator_core SHARED
-    src/ast_builder.cpp
     src/node.cpp
     src/scanner.cpp
     src/parser.cpp
+    src/ast_builder.cpp
+    src/symbol_table.cpp
+    src/storage.cpp
+    src/env.cpp
 )
 
 target_include_directories(calculator_core PUBLIC
@@ -22,4 +25,8 @@ target_link_libraries(calculator PRIVATE calculator_core)
 
 create_executable(test_calculator_parser
     SOURCE_FILES tests/src/test_parser.cpp
+    LINK_LIBS calculator_core ${COMMON_GTEST_LIBS})
+
+create_executable(test_calculator_runtime
+    SOURCE_FILES tests/src/test_runtime_state.cpp
     LINK_LIBS calculator_core ${COMMON_GTEST_LIBS})

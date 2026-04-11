@@ -20,6 +20,7 @@ public:
     explicit Scanner(std::istream& input);
     void accept();
     double getValue() const { return value_; }
+    const std::string& getSymbol() const { return symbol_; }
     EToken getToken() const { return token_; }
     bool isEmpty() const { return isEmpty_; }
     bool isDone() const { return token_ == EToken::TOKEN_END; }
@@ -28,6 +29,7 @@ private:
 private:
     std::istream& input_;
     double value_;
+    std::string symbol_;
     int curPos_;
     bool isEmpty_;
     EToken token_;

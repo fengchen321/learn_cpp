@@ -1,12 +1,29 @@
 #include "node.h"
+#include "env.h"
 #include <stdexcept>
 
 double NumberNode::calc() const {
     return value_;
 }
 
-double VariableNode::calc() {
-    return 0;
+
+double VariableNode::calc() const{
+    const unsigned int id = env_.findSymbol(symbol_);
+    if (id == SymbolTable::kInvalidSymbolId) {
+        throw std::runtime_error("Undefined variable");
+    }
+    if (!env_.getStorage().isInit(id)) {
+        throw std::runtime_error("Variable not initialized");
+    }
+    return env_.getStorage().getValue(id);
+}
+
+void VariableNode::assign(double value) {
+    unsigned int id = env_.findSymbol(symbol_);
+    if (id == SymbolTable::kInvalidSymbolId) {
+        id = env_.addSymbol(symbol_);
+    }
+    env_.getStorage().setValue(id, value);
 }
 
 double AddNode::calc() const {
@@ -30,7 +47,9 @@ double DivideNode::calc() const {
 }
 
 double AssignNode::calc() const {
-    return 0;
+    double value = right_->calc();
+    left_->assign(value);
+    return value;
 }
 
 double NegateNode::calc() const {

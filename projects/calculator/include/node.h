@@ -44,16 +44,17 @@ protected:
     std::unique_ptr<Node> child_;
 };
 
-class Storage;
+class Env;
 class VariableNode : public Node {
 public:
-    VariableNode(unsigned int id, Storage& storage);
-    double calc();
-    // bool isLvalue() const override;
-    // void assign(double value) override;
+    VariableNode(std::string symbol, Env& env)
+        : symbol_(std::move(symbol)), env_(env) {}
+    double calc() const;
+    bool isLvalue() const override { return true; }
+    void assign(double value) override;
 private:
-    const unsigned int id_;
-    Storage& storage_;
+    std::string symbol_;
+    Env& env_;
 };
 
 class AddNode : public BinaryNode {

@@ -1,5 +1,6 @@
 #include "scanner.h"
 #include "parser.h"
+#include "env.h"
 
 #include <iostream>
 #include <sstream>
@@ -7,6 +8,7 @@
 
 int main() {
     std::string line;
+    Env env;
     while (true) {
         std::cout << "> " << std::flush;
         if (!std::getline(std::cin, line)) {
@@ -24,7 +26,7 @@ int main() {
                 continue;
             }
 
-            Parser parser(scanner);
+            Parser parser(scanner, env);
             parser.parse();
             std::cout << "= " << parser.calc() << '\n';
         } catch (const std::exception& error) {

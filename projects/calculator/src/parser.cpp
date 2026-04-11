@@ -2,7 +2,7 @@
 #include "node.h"
 #include "scanner.h"
 #include "parser.h"
-
+#include "env.h"
 #include <stdexcept>
 #include <vector>
 
@@ -16,15 +16,37 @@ std::runtime_error UnexpectedToken() {
 
 Parser::Parser(Scanner& scanner)
     : ownedBuilder_(std::make_unique<BinaryAstBuilder>()),
+      ownedEnv_(std::make_unique<Env>()),
       builder_(*ownedBuilder_),
       scanner_(scanner),
+      env_(*ownedEnv_),
       tree_(nullptr),
       status_(EStatus::STATUS_SUCCESS) {}
 
 Parser::Parser(Scanner& scanner, IAstBuilder& builder)
     : ownedBuilder_(nullptr),
+      ownedEnv_(std::make_unique<Env>()),
       builder_(builder),
       scanner_(scanner),
+      env_(*ownedEnv_),
+      tree_(nullptr),
+      status_(EStatus::STATUS_SUCCESS) {}
+
+Parser::Parser(Scanner& scanner, Env& env)
+    : ownedBuilder_(std::make_unique<BinaryAstBuilder>()),
+      ownedEnv_(nullptr),
+      builder_(*ownedBuilder_),
+      scanner_(scanner),
+      env_(env),
+      tree_(nullptr),
+      status_(EStatus::STATUS_SUCCESS) {}
+
+Parser::Parser(Scanner& scanner, IAstBuilder& builder, Env& env)
+    : ownedBuilder_(nullptr),
+      ownedEnv_(nullptr),
+      builder_(builder),
+      scanner_(scanner),
+      env_(env),
       tree_(nullptr),
       status_(EStatus::STATUS_SUCCESS) {}
 
@@ -76,7 +98,7 @@ std::unique_ptr<Node> Parser::expr() {
         scanner_.accept();
         std::unique_ptr<Node> right = expr();
         if (!node->isLvalue()) {
-            throw std::runtime_error("Cannot assign to an lvalue");
+            throw std::runtime_error("Cannot assign to a non-lvalue");
         }
         node = builder_.makeAssign(std::move(node), std::move(right));
     }
@@ -126,6 +148,11 @@ std::unique_ptr<Node> Parser::factor() {
             }
             scanner_.accept();
             return node;
+        }
+        case EToken::TOKEN_IDENTIFIER: {
+            std::string symbol = scanner_.getSymbol();
+            scanner_.accept();
+            return std::make_unique<VariableNode>(std::move(symbol), env_);
         }
         case EToken::TOKEN_MINUS:
             scanner_.accept();

@@ -3,12 +3,13 @@
 #include <istream>
 
 Scanner::Scanner(std::istream& input)
-    : input_(input), value_(0), curPos_(0), token_(EToken::TOKEN_ERROR) {
+    : input_(input), value_(0), symbol_(), curPos_(0), token_(EToken::TOKEN_ERROR) {
     accept();
 }
 
 
 void Scanner::accept() {
+    symbol_.clear();
     readChar();
     switch (curPos_) {
         case '+':
@@ -44,12 +45,11 @@ void Scanner::accept() {
                 input_ >> value_;
                 token_ = EToken::TOKEN_NUMBER;
             } else if (std::isalpha(curPos_)) {
-                // 处理标识符
-                std::string identifier(1, static_cast<char>(curPos_));
+                symbol_ = std::string(1, static_cast<char>(curPos_));
                 while (input_.peek() != EOF && (std::isalnum(input_.peek()) || input_.peek() == '_')) {
-                    identifier += static_cast<char>(input_.get());
+                    symbol_ += static_cast<char>(input_.get());
                 }
-                token_ = EToken::TOKEN_IDENTIFIER; // 这里可以进一步区分不同的标识符
+                token_ = EToken::TOKEN_IDENTIFIER;
             } else {
                 token_ = EToken::TOKEN_ERROR; // 无效字符
             }

@@ -1,8 +1,8 @@
 #include "gtest_prompt.h"
 #include "ast_builder.h"
+#include "env.h"
 #include "parser.h"
 #include "scanner.h"
-
 #include <sstream>
 
 namespace {
@@ -23,10 +23,31 @@ double ParseAndEvaluate(const std::string& expression, IAstBuilder& builder) {
     return parser.calc();
 }
 
+double ParseAndEvaluate(const std::string& expression, Env& env) {
+    std::istringstream input(expression);
+    Scanner scanner(input);
+    Parser parser(scanner, env);
+    parser.parse();
+    return parser.calc();
+}
+
 std::string EvaluateError(const std::string& expression, IAstBuilder& builder) {
     std::istringstream input(expression);
     Scanner scanner(input);
     Parser parser(scanner, builder);
+    try {
+        parser.parse();
+        static_cast<void>(parser.calc());
+        return "";
+    } catch (const std::runtime_error& error) {
+        return error.what();
+    }
+}
+
+std::string EvaluateError(const std::string& expression, Env& env) {
+    std::istringstream input(expression);
+    Scanner scanner(input);
+    Parser parser(scanner, env);
     try {
         parser.parse();
         static_cast<void>(parser.calc());
@@ -125,6 +146,35 @@ TEST(ParserBuilderTest, BinaryAndNaryBuildersMatchForDivisionByZero) {
     EXPECT_EQ(EvaluateError("8 / (3 - 3)", binaryBuilder),
               EvaluateError("8 / (3 - 3)", naryBuilder));
     EXPECT_EQ(EvaluateError("8 / (3 - 3)", binaryBuilder), "Division by zero");
+}
+
+TEST(ParserAssignmentTest, SupportsSimpleAssignmentAcrossStatements) {
+    Env env;
+
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x = 5", env), 5.0);
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x + 6", env), 11.0);
+}
+
+TEST(ParserAssignmentTest, SupportsChainedAssignmentAcrossStatements) {
+    Env env;
+
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x = y = 9", env), 9.0);
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x + 2", env), 11.0);
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("y + 3", env), 12.0);
+}
+
+TEST(ParserAssignmentTest, ReadingUnknownVariableFailsWithoutRegisteringIt) {
+    Env env;
+
+    EXPECT_EQ(EvaluateError("x", env), "Undefined variable");
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x = 5", env), 5.0);
+    EXPECT_DOUBLE_EQ(ParseAndEvaluate("x + 1", env), 6.0);
+}
+
+TEST(ParserAssignmentTest, UsingUnknownVariableInExpressionFails) {
+    Env env;
+
+    EXPECT_EQ(EvaluateError("x + 1", env), "Undefined variable");
 }
 
 int main(int argc, char** argv) {
