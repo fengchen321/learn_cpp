@@ -1,0 +1,126 @@
+#pragma once
+
+#include <vector>
+#include <memory>
+#include <utility>
+#include <stdexcept>
+class Node {
+public:
+    Node() = default;
+    Node(const Node&) = delete;
+    Node(Node&&) = delete;
+    const Node& operator=(const Node&) = delete;
+    Node& operator=(Node&&) = delete;
+    virtual ~Node() = default;
+public:
+    virtual double calc() const = 0;
+    virtual bool isLvalue() const { return false; }
+    virtual void assign([[maybe_unused]] double value) { throw std::runtime_error("Not an lvalue"); }
+};
+
+class NumberNode : public Node {
+public:
+    NumberNode(double value): value_(value) {}
+    double calc() const override;
+private:
+    const double value_;
+};
+
+class BinaryNode : public Node {
+public:
+    BinaryNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : left_(std::move(left)), right_(std::move(right)) {}
+    ~BinaryNode() = default;
+protected:
+    std::unique_ptr<Node> left_;
+    std::unique_ptr<Node> right_;
+};
+
+class UnaryNode : public Node {
+public:
+    UnaryNode(std::unique_ptr<Node> child): child_(std::move(child)) {}
+    ~UnaryNode() = default;
+protected:
+    std::unique_ptr<Node> child_;
+};
+
+class Storage;
+class VariableNode : public Node {
+public:
+    VariableNode(unsigned int id, Storage& storage);
+    double calc();
+    // bool isLvalue() const override;
+    // void assign(double value) override;
+private:
+    const unsigned int id_;
+    Storage& storage_;
+};
+
+class AddNode : public BinaryNode {
+public:
+    AddNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : BinaryNode(std::move(left), std::move(right)) {}
+    double calc() const override;
+};
+
+class SubtractNode : public BinaryNode {
+public:
+    SubtractNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : BinaryNode(std::move(left), std::move(right)) {}
+    double calc() const override;
+};
+
+class MultiplyNode : public BinaryNode {
+public:
+    MultiplyNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : BinaryNode(std::move(left), std::move(right)) {}
+    double calc() const override;
+};
+
+class DivideNode : public BinaryNode {
+public:
+    DivideNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : BinaryNode(std::move(left), std::move(right)) {}
+    double calc() const override;
+};
+
+class AssignNode : public BinaryNode {
+public:
+    AssignNode(std::unique_ptr<Node> left, std::unique_ptr<Node> right)
+        : BinaryNode(std::move(left), std::move(right)) {}
+    double calc() const override;
+};
+
+class NegateNode : public UnaryNode {
+public:
+    explicit NegateNode(std::unique_ptr<Node> child): UnaryNode(std::move(child)) {}
+    double calc() const override;
+};
+
+class FunNode : public UnaryNode {
+public:
+    explicit FunNode(std::unique_ptr<Node> child): UnaryNode(std::move(child)) {}
+    double calc() const override;
+};
+
+class MultipleNode : public Node {
+public:
+    MultipleNode(std::unique_ptr<Node> node) {
+        addChild(std::move(node), true);
+    }
+    void addChild(std::unique_ptr<Node> node, bool isPositive);
+protected:
+    std::vector<std::unique_ptr<Node>> childs_;     
+    std::vector<bool> positives_; // true for addition, false for subtraction
+};
+class SumNode : public MultipleNode {
+public:
+    SumNode(std::unique_ptr<Node> node): MultipleNode(std::move(node)) {}
+    double calc() const override;
+};
+
+class ProductNode : public MultipleNode {
+public:
+    ProductNode(std::unique_ptr<Node> node): MultipleNode(std::move(node)) {}
+    double calc() const override;
+};

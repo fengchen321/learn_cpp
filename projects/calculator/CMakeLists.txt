@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 3.13.4)
+
+add_library(calculator_core SHARED
+    src/node.cpp
+    src/scanner.cpp
+    src/parser.cpp
+)
+
+target_include_directories(calculator_core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(calculator_core PRIVATE
+        -Wall -Wextra -Wpedantic
+    )
+endif()
+
+add_executable(calculator src/calculator.cpp)
+target_link_libraries(calculator PRIVATE calculator_core)
+
+create_executable(test_calculator_parser
+    SOURCE_FILES tests/src/test_parser.cpp
+    LINK_LIBS calculator_core ${COMMON_GTEST_LIBS})

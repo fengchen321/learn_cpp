@@ -68,5 +68,6 @@ enable_testing()
 # ---- Modules ----
 add_subdirectory(demo)
 add_subdirectory(stl)
+add_subdirectory(projects/calculator)
 add_subdirectory(projects/perf_duration_trace)
 add_subdirectory(test_performance)
