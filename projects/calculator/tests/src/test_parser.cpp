@@ -1,10 +1,11 @@
+#include <cmath>
+#include <sstream>
 #include "gtest_prompt.h"
 #include "ast_builder.h"
 #include "env.h"
+#include "exception.h"
 #include "parser.h"
 #include "scanner.h"
-#include <cmath>
-#include <sstream>
 
 namespace {
 
@@ -48,7 +49,7 @@ std::string EvaluateError(const std::string& expression, IAstBuilder& builder) {
         parser.parse();
         static_cast<void>(parser.calc());
         return "";
-    } catch (const std::runtime_error& error) {
+    } catch (const CalcException& error) {
         return error.what();
     }
 }
@@ -61,7 +62,20 @@ std::string EvaluateError(const std::string& expression, Env& env) {
         parser.parse();
         static_cast<void>(parser.calc());
         return "";
-    } catch (const std::runtime_error& error) {
+    } catch (const CalcException& error) {
+        return error.what();
+    }
+}
+
+std::string EvaluateError(const std::string& expression) {
+    std::istringstream input(expression);
+    Scanner scanner(input);
+    Parser parser(scanner);
+    try {
+        parser.parse();
+        static_cast<void>(parser.calc());
+        return "";
+    } catch (const CalcException& error) {
         return error.what();
     }
 }
@@ -92,7 +106,7 @@ TEST(ParserTest, RejectsIncompleteExpression) {
     std::istringstream input("1 +");
     Scanner scanner(input);
     Parser parser(scanner);
-    EXPECT_THROW(parser.parse(), std::runtime_error);
+    EXPECT_THROW(parser.parse(), SyntaxError);
 }
 
 TEST(ParserBuilderTest, BinaryAndNaryBuildersMatchForAdditiveChain) {
@@ -175,7 +189,7 @@ TEST(ParserAssignmentTest, SupportsChainedAssignmentAcrossStatements) {
 TEST(ParserAssignmentTest, ReadingUnknownVariableFailsWithoutRegisteringIt) {
     Env env;
 
-    EXPECT_EQ(EvaluateError("x", env), "Undefined variable");
+    EXPECT_EQ(EvaluateError("x", env), "Undefined variable: x");
     EXPECT_DOUBLE_EQ(ParseAndEvaluate("x = 5", env), 5.0);
     EXPECT_DOUBLE_EQ(ParseAndEvaluate("x + 1", env), 6.0);
 }
@@ -183,7 +197,7 @@ TEST(ParserAssignmentTest, ReadingUnknownVariableFailsWithoutRegisteringIt) {
 TEST(ParserAssignmentTest, UsingUnknownVariableInExpressionFails) {
     Env env;
 
-    EXPECT_EQ(EvaluateError("x + 1", env), "Undefined variable");
+    EXPECT_EQ(EvaluateError("x + 1", env), "Undefined variable: x");
 }
 
 TEST(ParserFunctionTest, SupportsBuiltinFunctionInsideExpression) {
@@ -249,6 +263,130 @@ TEST(ParserFunctionTest, RejectsFunctionCallWithMissingClosingParenthesis) {
     Env env;
 
     EXPECT_EQ(EvaluateError("log(e * e", env), "Expected ')'");
+}
+
+TEST(ExceptionTest, ThrowsSyntaxErrorForUnexpectedToken) {
+    EXPECT_THROW({
+        std::istringstream input("1 @ 2");
+        Scanner scanner(input);
+        Parser parser(scanner);
+        parser.parse();
+    }, SyntaxError);
+}
+
+TEST(ExceptionTest, ThrowsInvalidTokenErrorForBadCharacter) {
+    EXPECT_THROW({
+        std::istringstream input("$");
+        Scanner scanner(input);
+    }, InvalidTokenError);
+}
+
+TEST(ExceptionTest, InvalidTokenErrorContainsCharacterInfo) {
+    try {
+        std::istringstream input("#");
+        Scanner scanner(input);
+    } catch (const InvalidTokenError& e) {
+        EXPECT_EQ(std::string(e.what()), "Invalid character: '#'");
+    }
+}
+
+TEST(ExceptionTest, ThrowsDivisionByZeroError) {
+    EXPECT_THROW({
+        std::istringstream input("1 / 0");
+        Scanner scanner(input);
+        Parser parser(scanner);
+        parser.parse();
+        parser.calc();
+    }, DivisionByZeroError);
+}
+
+TEST(ExceptionTest, DivisionByZeroErrorMessage) {
+    try {
+        std::istringstream input("1 / 0");
+        Scanner scanner(input);
+        Parser parser(scanner);
+        parser.parse();
+        parser.calc();
+    } catch (const DivisionByZeroError& e) {
+        EXPECT_EQ(std::string(e.what()), "Division by zero");
+    }
+}
+
+TEST(ExceptionTest, ThrowsUndefinedVariableError) {
+    Env env;
+    EXPECT_THROW({
+        std::istringstream input("unknown_var");
+        Scanner scanner(input);
+        Parser parser(scanner, env);
+        parser.parse();
+        parser.calc();
+    }, UndefinedVariableError);
+}
+
+TEST(ExceptionTest, UndefinedVariableErrorContainsName) {
+    Env env;
+    try {
+        std::istringstream input("xyz");
+        Scanner scanner(input);
+        Parser parser(scanner, env);
+        parser.parse();
+        parser.calc();
+    } catch (const UndefinedVariableError& e) {
+        EXPECT_EQ(std::string(e.what()), "Undefined variable: xyz");
+    }
+}
+
+TEST(ExceptionTest, ThrowsUnknownFunctionError) {
+    Env env;
+    EXPECT_THROW({
+        std::istringstream input("nonexistent(1)");
+        Scanner scanner(input);
+        Parser parser(scanner, env);
+        parser.parse();
+        parser.calc();
+    }, UnknownFunctionError);
+}
+
+TEST(ExceptionTest, UnknownFunctionErrorContainsName) {
+    Env env;
+    try {
+        std::istringstream input("myfunc(1)");
+        Scanner scanner(input);
+        Parser parser(scanner, env);
+        parser.parse();
+        parser.calc();
+    } catch (const UnknownFunctionError& e) {
+        EXPECT_EQ(std::string(e.what()), "Unknown function: myfunc");
+    }
+}
+
+TEST(ExceptionTest, ExceptionHierarchy) {
+    // SyntaxError should be catchable as CalcException
+    EXPECT_THROW({
+        std::istringstream input("@");
+        Scanner scanner(input);
+    }, CalcException);
+
+    // RuntimeError should be catchable as CalcException
+    Env env;
+    EXPECT_THROW({
+        std::istringstream input("x");
+        Scanner scanner(input);
+        Parser parser(scanner, env);
+        parser.parse();
+        parser.calc();
+    }, CalcException);
+}
+
+TEST(ExceptionTest, RuntimeErrorHierarchy) {
+    // DivisionByZeroError should be catchable as RuntimeError
+    EXPECT_THROW({
+        std::istringstream input("1 / 0");
+        Scanner scanner(input);
+        Parser parser(scanner);
+        parser.parse();
+        parser.calc();
+    }, RuntimeError);
 }
 
 int main(int argc, char** argv) {

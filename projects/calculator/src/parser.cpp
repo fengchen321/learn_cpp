@@ -1,18 +1,10 @@
+#include <vector>
 #include "ast_builder.h"
 #include "node.h"
 #include "scanner.h"
 #include "parser.h"
 #include "env.h"
-#include <stdexcept>
-#include <vector>
-
-namespace {
-
-std::runtime_error UnexpectedToken() {
-    return std::runtime_error("Unexpected token");
-}
-
-} // namespace
+#include "exception.h"
 
 Parser::Parser(Scanner& scanner)
     : ownedBuilder_(std::make_unique<BinaryAstBuilder>()),
@@ -56,7 +48,7 @@ EStatus Parser::parse() {
     try {
         tree_ = expr();
         if (scanner_.getToken() != EToken::TOKEN_END) {
-            throw UnexpectedToken();
+            throw SyntaxError("Unexpected token");
         }
         if (!scanner_.isDone()) {
             status_ = EStatus::STATUS_ERROR;
@@ -71,7 +63,7 @@ EStatus Parser::parse() {
 
 double Parser::calc() const {
     if (!tree_) {
-        throw std::runtime_error("Parse tree is empty");
+        throw RuntimeError("Parse tree is empty");
     }
     return tree_->calc();
 }
@@ -98,7 +90,7 @@ std::unique_ptr<Node> Parser::expr() {
         scanner_.accept();
         std::unique_ptr<Node> right = expr();
         if (!node->isLvalue()) {
-            throw std::runtime_error("Cannot assign to a non-lvalue");
+            throw SyntaxError("Cannot assign to a non-lvalue");
         }
         node = builder_.makeAssign(std::move(node), std::move(right));
     }
@@ -144,7 +136,7 @@ std::unique_ptr<Node> Parser::factor() {
             scanner_.accept();
             std::unique_ptr<Node> node = expr();
             if (scanner_.getToken() != EToken::TOKEN_RPAREN) {
-                throw std::runtime_error("Expected ')'");
+                throw SyntaxError("Expected ')'");
             }
             scanner_.accept();
             return node;
@@ -157,16 +149,16 @@ std::unique_ptr<Node> Parser::factor() {
                 scanner_.accept();
                 std::unique_ptr<Node> node = expr();
                 if (scanner_.getToken() != EToken::TOKEN_RPAREN) {
-                    throw std::runtime_error("Expected ')'");
+                    throw SyntaxError("Expected ')'");
                 }
                 scanner_.accept();
                 if (!func) {
-                    throw std::runtime_error("Unknown function: " + symbol);
+                    throw UnknownFunctionError(symbol);
                 }
                 return builder_.makeFunction(std::move(node), func);
             }
             if (func) {
-                throw std::runtime_error("Expected '(' after function name");
+                throw SyntaxError("Expected '(' after function name");
             }
             return builder_.makeVariable(std::move(symbol), env_);
         }
@@ -174,6 +166,6 @@ std::unique_ptr<Node> Parser::factor() {
             scanner_.accept();
             return builder_.makeNegate(factor());
         default:
-            throw UnexpectedToken();
+            throw SyntaxError("Unexpected token");
     }
 }

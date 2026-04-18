@@ -1,6 +1,6 @@
-#include "symbol_table.h"
 #include <algorithm>
 #include <stdexcept>
+#include "symbol_table.h"
 
 unsigned int SymbolTable::add(const std::string& name) {
     const auto it = dictionary_.find(name);

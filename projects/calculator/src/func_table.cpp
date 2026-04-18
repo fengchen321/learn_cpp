@@ -1,9 +1,8 @@
-#include "func_table.h"
-#include "symbol_table.h"
-
 #include <cassert>
 #include <cmath>
 #include <stdexcept>
+#include "func_table.h"
+#include "symbol_table.h"
 
 namespace {
 

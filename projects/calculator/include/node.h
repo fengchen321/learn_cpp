@@ -1,13 +1,11 @@
 #pragma once
-
-#include "func_table.h"
-
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+#include "func_table.h"
 
 enum class EAdditiveOp : std::uint8_t {
     Add,

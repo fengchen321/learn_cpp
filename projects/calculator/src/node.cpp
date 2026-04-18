@@ -1,6 +1,6 @@
 #include "node.h"
 #include "env.h"
-#include <stdexcept>
+#include "exception.h"
 
 double NumberNode::calc() const {
     return value_;
@@ -10,10 +10,10 @@ double NumberNode::calc() const {
 double VariableNode::calc() const{
     const unsigned int id = env_.findSymbol(symbol_);
     if (id == SymbolTable::kInvalidSymbolId) {
-        throw std::runtime_error("Undefined variable");
+        throw UndefinedVariableError(symbol_);
     }
     if (!env_.getStorage().isInit(id)) {
-        throw std::runtime_error("Variable not initialized");
+        throw UninitializedVariableError(symbol_);
     }
     return env_.getStorage().getValue(id);
 }
@@ -41,7 +41,7 @@ double MultiplyNode::calc() const {
 double DivideNode::calc() const {
     double denominator = right_->calc();
     if (denominator == 0) {
-        throw std::runtime_error("Division by zero");
+        throw DivisionByZeroError();
     }
     return left_->calc() / denominator;
 }
@@ -105,7 +105,7 @@ double ProductNode::calc() const {
             result *= value;
         } else {
             if (value == 0) {
-                throw std::runtime_error("Division by zero");
+                throw DivisionByZeroError();
             }
             result /= value;
         }

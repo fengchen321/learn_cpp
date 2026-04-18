@@ -1,8 +1,7 @@
-#include "storage.h"
-#include "symbol_table.h"
-
 #include <cmath>
 #include <stdexcept>
+#include "storage.h"
+#include "symbol_table.h"
 
 namespace {
 

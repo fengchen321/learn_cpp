@@ -1,6 +1,7 @@
-#include "scanner.h"
 #include <cctype>
 #include <istream>
+#include "scanner.h"
+#include "exception.h"
 
 Scanner::Scanner(std::istream& input)
     : input_(input), value_(0), symbol_(), curPos_(0), token_(EToken::TOKEN_ERROR) {
@@ -51,7 +52,7 @@ void Scanner::accept() {
                 }
                 token_ = EToken::TOKEN_IDENTIFIER;
             } else {
-                token_ = EToken::TOKEN_ERROR; // 无效字符
+                throw InvalidTokenError(static_cast<char>(curPos_));
             }
             break;
     }

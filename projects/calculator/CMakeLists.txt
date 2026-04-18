@@ -9,6 +9,7 @@ add_library(calculator_core SHARED
     src/storage.cpp
     src/env.cpp
     src/func_table.cpp
+    src/exception.cpp
 )
 
 target_include_directories(calculator_core PUBLIC
@@ -19,6 +20,9 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(calculator_core PRIVATE
         -Wall -Wextra -Wpedantic
     )
+    # For backtrace symbol resolution
+    target_link_libraries(calculator_core PRIVATE dl)
+    target_link_options(calculator_core PRIVATE -rdynamic)
 endif()
 
 add_executable(calculator src/calculator.cpp)
