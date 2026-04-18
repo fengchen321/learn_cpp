@@ -2,6 +2,7 @@
 #include <iosfwd>
 #include <string>
 enum class EToken {
+    TOKEN_COMMAND,
     TOKEN_END,
     TOKEN_ERROR,
     TOKEN_NUMBER,
@@ -19,11 +20,13 @@ class Scanner {
 public:
     explicit Scanner(std::istream& input);
     void accept();
+    void acceptCommand();
     double getValue() const { return value_; }
     const std::string& getSymbol() const { return symbol_; }
     EToken getToken() const { return token_; }
     bool isEmpty() const { return isEmpty_; }
     bool isDone() const { return token_ == EToken::TOKEN_END; }
+    bool isCommand() const {return token_ == EToken::TOKEN_COMMAND; }
 private:
     void readChar();
 private:

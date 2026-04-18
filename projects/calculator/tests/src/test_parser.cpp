@@ -2,6 +2,7 @@
 #include <sstream>
 #include "gtest_prompt.h"
 #include "ast_builder.h"
+#include "commandParser.h"
 #include "env.h"
 #include "exception.h"
 #include "parser.h"
@@ -387,6 +388,140 @@ TEST(ExceptionTest, RuntimeErrorHierarchy) {
         parser.parse();
         parser.calc();
     }, RuntimeError);
+}
+
+// CommandParser Tests
+
+TEST(CommandParserTest, ParsesHelpCommand) {
+    Env env;
+    std::istringstream input("!help\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesHelpCommandShortForm) {
+    Env env;
+    std::istringstream input("!h\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesQuitCommand) {
+    Env env;
+    std::istringstream input("!quit\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_QUIT);
+}
+
+TEST(CommandParserTest, ParsesQuitCommandShortForm) {
+    Env env;
+    std::istringstream input("!q\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_QUIT);
+}
+
+TEST(CommandParserTest, ParsesListVarsCommand) {
+    Env env;
+    std::istringstream input("!list_vars\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesListVarsCommandShortForm) {
+    Env env;
+    std::istringstream input("!v\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesListFuncsCommand) {
+    Env env;
+    std::istringstream input("!list_funcs\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesListFuncsCommandShortForm) {
+    Env env;
+    std::istringstream input("!f\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesLoadCommand) {
+    Env env;
+    std::istringstream input("!load test.txt\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesLoadCommandShortForm) {
+    Env env;
+    std::istringstream input("!l test.dat\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesSaveCommand) {
+    Env env;
+    std::istringstream input("!save output.txt\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, ParsesSaveCommandShortForm) {
+    Env env;
+    std::istringstream input("!s output.dat\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+}
+
+TEST(CommandParserTest, HandlesUnknownCommand) {
+    Env env;
+    std::istringstream input("!unknown\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    CommandParser cmdParser(scanner, env);
+    EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_ERROR);
+}
+
+TEST(CommandParserTest, RecognizesCommandToken) {
+    Env env;
+    std::istringstream input("!help\n");
+    Scanner scanner(input);
+    EXPECT_TRUE(scanner.isCommand());
+    EXPECT_EQ(scanner.getToken(), EToken::TOKEN_COMMAND);
+}
+
+TEST(CommandParserTest, NonCommandIsNotRecognized) {
+    std::istringstream input("1 + 2\n");
+    Scanner scanner(input);
+    EXPECT_FALSE(scanner.isCommand());
+    EXPECT_EQ(scanner.getToken(), EToken::TOKEN_NUMBER);
 }
 
 int main(int argc, char** argv) {

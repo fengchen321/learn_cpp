@@ -10,6 +10,7 @@ add_library(calculator_core SHARED
     src/env.cpp
     src/func_table.cpp
     src/exception.cpp
+    src/commandParser.cpp
 )
 
 target_include_directories(calculator_core PUBLIC

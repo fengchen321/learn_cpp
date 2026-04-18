@@ -13,6 +13,9 @@ void Scanner::accept() {
     symbol_.clear();
     readChar();
     switch (curPos_) {
+        case '!':
+            token_ = EToken::TOKEN_COMMAND;
+            break;
         case '+':
             token_ = EToken::TOKEN_PLUS;
             break;
@@ -62,7 +65,16 @@ void Scanner::accept() {
 void Scanner::readChar() {
     // 读取下一个字符并更新 curPos_
     curPos_ = input_.get();
-    while(curPos_ == ' ' || curPos_ == '\t' || curPos_ == '\n') {
+    while(curPos_ == ' ' || curPos_ == '\t') {
+        curPos_ = input_.get();
+    }
+}
+
+void Scanner::acceptCommand() {
+    readChar();
+    symbol_.erase();
+    while (!isspace(curPos_)) {
+        symbol_ += static_cast<char>(curPos_);
         curPos_ = input_.get();
     }
 }

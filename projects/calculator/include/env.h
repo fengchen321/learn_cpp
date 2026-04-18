@@ -16,6 +16,8 @@ public:
     unsigned int addSymbol(const std::string& name);
     unsigned int findSymbol(const std::string& name) const;
 
+    void listVariables() const;
+    void listFunctions() const;
 private:
     SymbolTable symTbl_;
     FuncTable funcTbl_;

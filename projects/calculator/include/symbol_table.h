@@ -21,6 +21,8 @@ public:
     void clear();
     std::string getSymbolName(unsigned int id) const;
 
+    unsigned int currentId() const { return currentId_; }
+
 private:
     std::map<std::string, unsigned int> dictionary_;
     unsigned int currentId_ = 0;
