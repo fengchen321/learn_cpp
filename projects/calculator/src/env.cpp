@@ -1,5 +1,15 @@
 #include "env.h"
 
+void Env::serialize(Serializer& output) const {
+    symTbl_.serialize(output);
+    storage_.serialize(output);
+}
+
+void Env::deserialize(DeSerializer& input) {
+    symTbl_.deserialize(input);
+    storage_.deserialize(input);
+}
+
 unsigned int Env::addSymbol(const std::string& name) {
     return symTbl_.add(name);
 }

@@ -36,3 +36,7 @@ create_executable(test_calculator_parser
 create_executable(test_calculator_runtime
     SOURCE_FILES tests/src/test_runtime_state.cpp
     LINK_LIBS calculator_core ${COMMON_GTEST_LIBS})
+
+create_executable(test_calculator_serial
+    SOURCE_FILES tests/src/test_serial.cpp
+    LINK_LIBS calculator_core ${COMMON_GTEST_LIBS})

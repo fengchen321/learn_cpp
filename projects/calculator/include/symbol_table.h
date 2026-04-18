@@ -5,8 +5,9 @@ support variable and functions.
 #include <limits>
 #include <map>
 #include <string>
+#include "serial.h"
 
-class SymbolTable {
+class SymbolTable : public Serializable {
 public:
     static constexpr unsigned int kInvalidSymbolId = std::numeric_limits<unsigned int>::max();
     SymbolTable() = default;
@@ -15,6 +16,9 @@ public:
     const SymbolTable& operator=(const SymbolTable&) = delete;
     SymbolTable& operator=(SymbolTable&&) = delete;
     ~SymbolTable() = default;
+
+    void serialize(Serializer& output) const override;
+    void deserialize(DeSerializer& input) override;
 public:
     unsigned int add(const std::string& name);
     unsigned int find(const std::string& name) const;

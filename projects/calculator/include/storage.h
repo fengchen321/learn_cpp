@@ -5,9 +5,10 @@ store variable values and Constants.
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "serial.h"
 
 class SymbolTable;
-class Storage {
+class Storage : public Serializable {
 public:
     Storage() = delete;
     explicit Storage(SymbolTable& tbl);
@@ -16,6 +17,9 @@ public:
     const Storage& operator=(const Storage&) = delete;
     Storage& operator=(Storage&&) = delete;
     ~Storage() = default;
+
+    void serialize(Serializer& output) const override;
+    void deserialize(DeSerializer& input) override;
 public:
     bool isInit(unsigned int id) const;
     void addConstant(SymbolTable& tbl, const std::string& name, double value);

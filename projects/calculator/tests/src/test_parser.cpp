@@ -466,38 +466,60 @@ TEST(CommandParserTest, ParsesListFuncsCommandShortForm) {
 
 TEST(CommandParserTest, ParsesLoadCommand) {
     Env env;
-    std::istringstream input("!load test.txt\n");
+    // First create a valid save file
+    {
+        std::istringstream inputSave("!save /tmp/test_load.txt\n");
+        Scanner scannerSave(inputSave);
+        EXPECT_TRUE(scannerSave.isCommand());
+        CommandParser cmdParserSave(scannerSave, env);
+        EXPECT_EQ(cmdParserSave.execute(), EStatus::STATUS_SUCCESS);
+    }
+    // Then load it
+    std::istringstream input("!load /tmp/test_load.txt\n");
     Scanner scanner(input);
     EXPECT_TRUE(scanner.isCommand());
     CommandParser cmdParser(scanner, env);
     EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+    std::remove("/tmp/test_load.txt");
 }
 
 TEST(CommandParserTest, ParsesLoadCommandShortForm) {
     Env env;
-    std::istringstream input("!l test.dat\n");
+    // First create a valid save file
+    {
+        std::istringstream inputSave("!s /tmp/test_load_short.dat\n");
+        Scanner scannerSave(inputSave);
+        EXPECT_TRUE(scannerSave.isCommand());
+        CommandParser cmdParserSave(scannerSave, env);
+        EXPECT_EQ(cmdParserSave.execute(), EStatus::STATUS_SUCCESS);
+    }
+    // Then load it
+    std::istringstream input("!l /tmp/test_load_short.dat\n");
     Scanner scanner(input);
     EXPECT_TRUE(scanner.isCommand());
     CommandParser cmdParser(scanner, env);
     EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+    std::remove("/tmp/test_load_short.dat");
 }
 
 TEST(CommandParserTest, ParsesSaveCommand) {
     Env env;
-    std::istringstream input("!save output.txt\n");
+    std::istringstream input("!save /tmp/test_save.txt\n");
     Scanner scanner(input);
     EXPECT_TRUE(scanner.isCommand());
     CommandParser cmdParser(scanner, env);
     EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+    std::remove("/tmp/test_save.txt");
 }
 
 TEST(CommandParserTest, ParsesSaveCommandShortForm) {
     Env env;
-    std::istringstream input("!s output.dat\n");
+    std::istringstream input("!s /tmp/test_save.dat\n");
     Scanner scanner(input);
     EXPECT_TRUE(scanner.isCommand());
     CommandParser cmdParser(scanner, env);
     EXPECT_EQ(cmdParser.execute(), EStatus::STATUS_SUCCESS);
+    std::remove("/tmp/test_save.dat");
 }
 
 TEST(CommandParserTest, HandlesUnknownCommand) {

@@ -3,11 +3,15 @@
 #include "symbol_table.h"
 #include "func_table.h"
 #include "storage.h"
+#include "serial.h"
 
-class Env {
+class Env : public Serializable {
     friend class Parser;
 public:
     Env(): funcTbl_(symTbl_), storage_(symTbl_) {}
+
+    void serialize(Serializer& output) const override;
+    void deserialize(DeSerializer& input) override;
 
     Storage& getStorage() { return storage_; }
     const Storage& getStorage() const { return storage_; }

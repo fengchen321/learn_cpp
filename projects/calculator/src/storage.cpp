@@ -13,6 +13,25 @@ void ValidateSymbolId(unsigned int id) {
 
 } // namespace
 
+void Storage::serialize(Serializer& output) const {
+    output << cells_.size();
+    for (size_t i = 0; i < cells_.size(); ++i) {
+        output << cells_[i] << inits_[i];
+    }
+}
+
+void Storage::deserialize(DeSerializer& input) {
+    cells_.clear();
+    inits_.clear();
+    size_t size;
+    input >> size;
+    cells_.resize(size);
+    inits_.resize(size);
+    for (size_t i = 0; i < size; ++i) {
+        input >> cells_[i] >> inits_[i];
+    }
+}
+
 Storage::Storage(SymbolTable& tbl) {
     addConstant(tbl, "pi", 2.0 * std::acos(0.0));
     addConstant(tbl, "e", std::exp(1.0));

@@ -2,13 +2,13 @@
 #include "scanner.h"
 #include "env.h"
 #include "commandParser.h"
+#include "exception.h"
 
+const std::string kVersion = "1.0.0";
 CommandParser::CommandParser(Scanner& scanner, Env& env)
     : scanner_(scanner), env_(env) {
     assert(scanner_.isCommand());
-    // Do NOT call accept() here - symbol_ already contains the command after '!'
-    // We need to read the command string after '!'
-    scanner_.acceptCommand();
+    scanner_.accept();
     commandstr_ = scanner_.getSymbol();
     if (commandstr_.compare("help") == 0 || commandstr_.compare("h") == 0) {
         command_ = ECommand::CMD_HELP;
@@ -29,6 +29,7 @@ CommandParser::CommandParser(Scanner& scanner, Env& env)
 
 EStatus CommandParser::execute() {
     EStatus status = EStatus::STATUS_SUCCESS;
+    scanner_.acceptCommand();
     std::string fileName;
     switch (command_) {
         case ECommand::CMD_HELP:
@@ -81,11 +82,33 @@ void CommandParser::listFunctions() const {
 }
 
 EStatus CommandParser::load(const std::string& filename) {
-    // Implementation for loading file
-    return EStatus::STATUS_SUCCESS;
+    printf("Loading from file: %s\n", filename.c_str());
+    EStatus status = EStatus::STATUS_SUCCESS;
+    try {
+        DeSerializer deserializer(filename);
+        std::string version;
+        deserializer >> version;
+        if (version != kVersion) {
+            throw RuntimeError("Version mismatch: expected " + kVersion + ", got " + version);
+        }
+        env_.deserialize(deserializer);
+    } catch (const std::exception& e) {
+        printf("Failed to load file: %s\n", e.what());
+        status = EStatus::STATUS_ERROR;
+    }
+    return status;
 }
 
 EStatus CommandParser::save(const std::string& filename) const {
-    // Implementation for saving file
-    return EStatus::STATUS_SUCCESS;
+    printf("Saving to file: %s\n", filename.c_str());
+    EStatus status = EStatus::STATUS_SUCCESS;
+    try {
+        Serializer serializer(filename);
+        serializer << kVersion; // Write version for compatibility check
+        env_.serialize(serializer);
+    } catch (const std::exception& e) {
+        printf("Failed to save file: %s\n", e.what());
+        status = EStatus::STATUS_ERROR;
+    }
+    return status;
 }

@@ -73,7 +73,7 @@ void Scanner::readChar() {
 void Scanner::acceptCommand() {
     readChar();
     symbol_.erase();
-    while (!isspace(curPos_)) {
+    while (curPos_ != EOF && !isspace(curPos_)) {
         symbol_ += static_cast<char>(curPos_);
         curPos_ = input_.get();
     }
